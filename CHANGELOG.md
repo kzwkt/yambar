@@ -19,8 +19,11 @@
 ### Fixed
 
 * Compiler error _‘fmt’ may be used uninitialized_ ([#311][311]).
+* map: conditions failing to match when they contain multiple, quoted
+  tag values ([#302][302]).
 
 [311]: https://codeberg.org/dnkl/yambar/issues/311
+[302]: https://codeberg.org/dnkl/yambar/issues/302
 
 
 ### Security
