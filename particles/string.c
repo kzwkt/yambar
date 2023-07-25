@@ -180,20 +180,10 @@ instantiate(const struct particle *particle, const struct tag_set *tags)
 
     /* Truncate, if necessary */
     if (p->max_len > 0 && chars > p->max_len) {
-        size_t end = p->max_len;
-        if (end >= 1) {
-            /* "allocate" room for three dots at the end */
-            end -= 1;
-        }
-
-        if (p->max_len > 1) {
-            wtext[end] = U'…';
-            wtext[end + 1] = U'\0';
-            chars = end + 1;
-        } else {
-            wtext[end] = U'\0';
-            chars = 0;
-        }
+        chars = p->max_len;
+        if (p->max_len > 3)
+            wtext[p->max_len - 1] = U'…';
+        wtext[p->max_len] = U'\0';
     }
 
     e->kern_x = calloc(chars, sizeof(e->kern_x[0]));
