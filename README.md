@@ -87,6 +87,7 @@ Available modules:
 * mem
 * mpd
 * network
+* pipewire
 * pulse
 * removables
 * river
@@ -106,7 +107,7 @@ mkdir -p bld/release && cd bld/release
 Second, configure the build (if you intend to install it globally, you
 might also want `--prefix=/usr`):
 ```sh
-meson --buildtype=release ../..
+meson setup --buildtype=release ..
 ```
 
 Optionally, explicitly disable a backend (or enable, if you want a

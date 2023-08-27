@@ -36,6 +36,7 @@ if plugin_mpd_enabled
 endif
 if plugin_i3_enabled
   plugin_pages += ['yambar-modules-i3.5.scd']
+  plugin_pages += ['yambar-modules-sway.5.scd']
 endif
 if plugin_label_enabled
   plugin_pages += ['yambar-modules-label.5.scd']

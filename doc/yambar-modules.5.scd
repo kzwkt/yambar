@@ -142,13 +142,25 @@ Available modules have their own pages:
 
 *yambar-modules-clock*(5)
 
+*yambar-modules-cpu*(5)
+
+*yambar-modules-disk-io*(5)
+
+*yambar-modules-dwl*(5)
+
+*yambar-modules-foreign-toplevel*(5)
+
 *yambar-modules-i3*(5)
 
 *yambar-modules-label*(5)
 
+*yambar-modules-mem*(5)
+
 *yambar-modules-mpd*(5)
 
 *yambar-modules-network*(5)
+
+*yambar-modules-pipewire*(5)
 
 *yambar-modules-pulse*(5)
 
