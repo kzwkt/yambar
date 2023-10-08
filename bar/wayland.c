@@ -937,6 +937,17 @@ get_buffer(struct wayland_backend *backend)
         goto err;
     }
 
+#if defined(MEMFD_CREATE)
+    /* Seal file - we no longer allow any kind of resizing */
+    /* TODO: wayland mmaps(PROT_WRITE), for some unknown reason, hence we cannot use F_SEAL_FUTURE_WRITE */
+    if (fcntl(pool_fd, F_ADD_SEALS,
+              F_SEAL_GROW | F_SEAL_SHRINK | /*F_SEAL_FUTURE_WRITE |*/ F_SEAL_SEAL) < 0)
+    {
+        LOG_ERRNO("failed to seal SHM backing memory file");
+        /* This is not a fatal error */
+    }
+#endif
+
     pool = wl_shm_create_pool(backend->shm, pool_fd, size);
     if (pool == NULL) {
         LOG_ERR("failed to create SHM pool");
