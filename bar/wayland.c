@@ -28,6 +28,12 @@
 
 #include "private.h"
 
+#if defined(MFD_NOEXEC_SEAL)
+    #define YAMBAR_MFD_FLAGS (MFD_CLOEXEC | MFD_ALLOW_SEALING | MFD_NOEXEC_SEAL)
+#else
+    #define YAMBAR_MFD_FLAGS (MFD_CLOEXEC | MFD_ALLOW_SEALING)
+#endif
+
 struct buffer {
     bool busy;
     size_t width;
@@ -907,7 +913,7 @@ get_buffer(struct wayland_backend *backend)
 
     /* Backing memory for SHM */
 #if defined(MEMFD_CREATE)
-    pool_fd = memfd_create("yambar-wayland-shm-buffer-pool", MFD_CLOEXEC);
+    pool_fd = memfd_create("yambar-wayland-shm-buffer-pool", YAMBAR_MFD_FLAGS);
 #elif defined(__FreeBSD__)
     // memfd_create on FreeBSD 13 is SHM_ANON without sealing support
     pool_fd = shm_open(SHM_ANON, O_RDWR | O_CLOEXEC, 0600);
