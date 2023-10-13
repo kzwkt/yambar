@@ -28,10 +28,8 @@
 
 #include "private.h"
 
-#if defined(MFD_NOEXEC_SEAL)
-    #define YAMBAR_MFD_FLAGS (MFD_CLOEXEC | MFD_ALLOW_SEALING | MFD_NOEXEC_SEAL)
-#else
-    #define YAMBAR_MFD_FLAGS (MFD_CLOEXEC | MFD_ALLOW_SEALING)
+#if !defined(MFD_NOEXEC_SEAL)
+ #define MFD_NOEXEC_SEAL 0
 #endif
 
 struct buffer {
@@ -913,7 +911,19 @@ get_buffer(struct wayland_backend *backend)
 
     /* Backing memory for SHM */
 #if defined(MEMFD_CREATE)
-    pool_fd = memfd_create("yambar-wayland-shm-buffer-pool", YAMBAR_MFD_FLAGS);
+    /*
+     * Older kernels reject MFD_NOEXEC_SEAL with EINVAL. Try first
+     * *with* it, and if that fails, try again *without* it.
+     */
+    errno = 0;
+    pool_fd = memfd_create(
+        "yambar-wayland-shm-buffer-pool",
+        MFD_CLOEXEC | MFD_ALLOW_SEALING | MFD_NOEXEC_SEAL);
+
+    if (pool_fd < 0 && errno == EINVAL) {
+        pool_fd = memfd_create(
+            "yambar-wayland-shm-buffer-pool", MFD_CLOEXEC | MFD_ALLOW_SEALING);
+    }
 #elif defined(__FreeBSD__)
     // memfd_create on FreeBSD 13 is SHM_ANON without sealing support
     pool_fd = shm_open(SHM_ANON, O_RDWR | O_CLOEXEC, 0600);
