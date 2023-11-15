@@ -61,6 +61,16 @@ the state *unknown* under other conditions.
    (default=*60000*). Set to `0` to disable polling (*warning*: many
    batteries do not support asynchronous reporting). Cannot be less
    than 250ms.
+|  battery-scale
+:  int
+:  no
+:  How much to scale down the battery charge amount. Some batteries
+   report too high resulting in bad discharge estimates
+|  smoothing-secs
+:  int
+:  no
+:  How many seconds to perform smoothing over for battery discharge
+   estimates.
 
 # EXAMPLES
 

@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <assert.h>
 #include <errno.h>
+#include <math.h>
 
 #include <poll.h>
 
@@ -12,9 +13,10 @@
 #include <fcntl.h>
 
 #include <libudev.h>
+#include <tllist.h>
 
 #define LOG_MODULE "battery"
-#define LOG_ENABLE_DBG 1
+#define LOG_ENABLE_DBG 0
 #include "../log.h"
 #include "../bar/bar.h"
 #include "../config.h"
@@ -25,13 +27,22 @@
 
 static const long min_poll_interval = 250;
 static const long default_poll_interval = 60 * 1000;
+static const long one_sec_in_ns = 1000000000;
 
 enum state { STATE_FULL, STATE_NOTCHARGING, STATE_CHARGING, STATE_DISCHARGING, STATE_UNKNOWN };
+
+struct current_state {
+    long ema;
+    long current;
+    struct timespec time;
+};
 
 struct private {
     struct particle *label;
 
     long poll_interval;
+    int battery_scale;
+    long smoothing_scale;
     char *battery;
     char *manufacturer;
     char *model;
@@ -45,16 +56,53 @@ struct private {
     long energy;
     long power;
     long charge;
-    long current;
+    struct current_state ema_current;
     long time_to_empty;
     long time_to_full;
 };
+
+int64_t difftimespec_ns(const struct timespec after, const struct timespec before)
+{
+    return ((int64_t)after.tv_sec - (int64_t)before.tv_sec) * (int64_t)one_sec_in_ns
+         + ((int64_t)after.tv_nsec - (int64_t)before.tv_nsec);
+}
+
+// Linear Exponential Moving Average (unevenly spaced time series)
+// http://www.eckner.com/papers/Algorithms%20for%20Unevenly%20Spaced%20Time%20Series.pdf
+// Adapted from: https://github.com/andreas50/utsAlgorithms/blob/master/ema.c
+void
+ema_linear(struct current_state *state, struct current_state curr, long tau)
+{
+    double w, w2, tmp;
+
+    if (state->current == -1) {
+        *state = curr;
+        return;
+    }
+
+    long time = difftimespec_ns(curr.time, state->time);
+    tmp = time / (double)tau;
+    w = exp(-tmp);
+    if (tmp > 1e-6) {
+        w2 = (1 - w) / tmp;
+    } else {
+        // Use taylor expansion for numerical stability
+        w2 = 1 - tmp/2 + tmp*tmp/6 - tmp*tmp*tmp/24;
+    }
+
+    double ema = state->ema * w + curr.current * (1 - w2) + state->current * (w2 - w);
+
+    state->ema = ema;
+    state->current = curr.current;
+    state->time = curr.time;
+
+    LOG_DBG("ema current: %ld", (long)ema);
+}
 
 static void
 timespec_sub(const struct timespec *a, const struct timespec *b,
              struct timespec *res)
 {
-    const long one_sec_in_ns = 1000000000;
 
     res->tv_sec = a->tv_sec - b->tv_sec;
     res->tv_nsec = a->tv_nsec - b->tv_nsec;
@@ -127,15 +175,15 @@ content(struct module *mod)
 
         hours = hours_as_float;
         minutes = (hours_as_float - (double)hours) * 60;
-    } else if (m->charge_full >= 0 && m->charge >= 0 && m->current >= 0) {
+    } else if (m->charge_full >= 0 && m->charge >= 0 && m->ema_current.current >= 0) {
         unsigned long charge = m->state == STATE_CHARGING
             ? m->charge_full - m->charge : m->charge;
 
         double hours_as_float;
         if (m->state == STATE_FULL || m->state == STATE_NOTCHARGING)
             hours_as_float = 0.0;
-        else if (m->current > 0)
-            hours_as_float = (double)charge / m->current;
+        else if (m->ema_current.current > 0)
+            hours_as_float = (double)charge / m->ema_current.current;
         else
             hours_as_float = 99.0;
 
@@ -291,7 +339,7 @@ initialize(struct private *m)
                 goto err;
             }
 
-            m->charge_full_design = readint_from_fd(fd);
+            m->charge_full_design = readint_from_fd(fd) / m->battery_scale;
             close(fd);
         }
 
@@ -302,7 +350,7 @@ initialize(struct private *m)
                 goto err;
             }
 
-            m->charge_full = readint_from_fd(fd);
+            m->charge_full = readint_from_fd(fd) / m->battery_scale;
             close(fd);
         }
     } else {
@@ -366,6 +414,10 @@ update_status(struct module *mod)
     long time_to_empty = time_to_empty_fd >= 0 ? readint_from_fd(time_to_empty_fd) : -1;
     long time_to_full = time_to_full_fd >= 0 ? readint_from_fd(time_to_full_fd) : -1;
 
+    if (charge >= -1) {
+        charge /= m->battery_scale;
+    }
+
     char buf[512];
     const char *status = readline_from_fd(status_fd, sizeof(buf), buf);
 
@@ -409,16 +461,23 @@ update_status(struct module *mod)
     }
 
     LOG_DBG("capacity: %ld, energy: %ld, power: %ld, charge=%ld, current=%ld, "
-            "time-to-empty: %ld, time-to-full: %ld", capacity, energy, power,
-            charge, current, time_to_empty, time_to_full);
+            "time-to-empty: %ld, time-to-full: %ld", capacity,
+            energy, power, charge, current, time_to_empty, time_to_full);
 
     mtx_lock(&mod->lock);
+    if (m->state != state) {
+        m->ema_current = (struct current_state){-1, 0, (struct timespec){0, 0}};
+    }
     m->state = state;
     m->capacity = capacity;
     m->energy = energy;
     m->power = power;
     m->charge = charge;
-    m->current = current;
+    if (current != -1) {
+        struct timespec t;
+        clock_gettime(CLOCK_MONOTONIC, &t);
+        ema_linear(&m->ema_current, (struct current_state){current, current, t}, m->smoothing_scale);
+    }
     m->time_to_empty = time_to_empty;
     m->time_to_full = time_to_full;
     mtx_unlock(&mod->lock);
@@ -548,13 +607,16 @@ out:
 }
 
 static struct module *
-battery_new(const char *battery, struct particle *label, long poll_interval_msecs)
+battery_new(const char *battery, struct particle *label, long poll_interval_msecs, int battery_scale, long smoothing_secs)
 {
     struct private *m = calloc(1, sizeof(*m));
     m->label = label;
     m->poll_interval = poll_interval_msecs;
+    m->battery_scale = battery_scale;
+    m->smoothing_scale = smoothing_secs * one_sec_in_ns;
     m->battery = strdup(battery);
     m->state = STATE_UNKNOWN;
+    m->ema_current = (struct current_state){ -1, 0, (struct timespec){0, 0} };
 
     struct module *mod = module_common_new();
     mod->private = m;
@@ -571,13 +633,21 @@ from_conf(const struct yml_node *node, struct conf_inherit inherited)
     const struct yml_node *c = yml_get_value(node, "content");
     const struct yml_node *name = yml_get_value(node, "name");
     const struct yml_node *poll_interval = yml_get_value(node, "poll-interval");
+    const struct yml_node *battery_scale = yml_get_value(node, "battery-scale");
+    const struct yml_node *smoothing_secs = yml_get_value(node, "smoothing-secs");
 
     return battery_new(
         yml_value_as_string(name),
         conf_to_particle(c, inherited),
         (poll_interval != NULL
          ? yml_value_as_int(poll_interval)
-         : default_poll_interval));
+         : default_poll_interval),
+        (battery_scale != NULL
+         ? yml_value_as_int(battery_scale)
+         : 1),
+        (smoothing_secs != NULL
+         ? yml_value_as_int(smoothing_secs)
+         : 100));
 }
 
 static bool
@@ -603,6 +673,8 @@ verify_conf(keychain_t *chain, const struct yml_node *node)
     static const struct attr_info attrs[] = {
         {"name", true, &conf_verify_string},
         {"poll-interval", false, &conf_verify_poll_interval},
+        {"battery-scale", false, &conf_verify_unsigned},
+        {"smoothing-secs", false, &conf_verify_unsigned},
         MODULE_COMMON_ATTRS,
     };
 
