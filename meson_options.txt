@@ -19,7 +19,7 @@ option('plugin-cpu', type: 'feature', value: 'auto',
 option('plugin-disk-io', type: 'feature', value: 'auto',
        description: 'Disk I/O support')
 option('plugin-dwl', type: 'feature', value: 'auto',
-       description: 'DWL (dwm for wayland) support')
+       description: 'dwl (dwm for wayland) support')
 option('plugin-foreign-toplevel', type: 'feature', value: 'auto',
        description: 'Foreign toplevel (window tracking for Wayland) support')
 option('plugin-mem', type: 'feature', value: 'auto',

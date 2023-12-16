@@ -174,7 +174,7 @@ summary(
     'Clock': plugin_clock_enabled,
     'CPU monitoring': plugin_cpu_enabled,
     'Disk I/O monitoring': plugin_disk_io_enabled,
-    'DWL (dwm for Wayland)': plugin_dwl_enabled,
+    'dwl (dwm for Wayland)': plugin_dwl_enabled,
     'Foreign toplevel (window tracking for Wayland)': plugin_foreign_toplevel_enabled,
     'Memory monitoring': plugin_mem_enabled,
     'Music Player Daemon (MPD)': plugin_mpd_enabled,

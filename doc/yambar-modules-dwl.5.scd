@@ -28,7 +28,7 @@ Running multiple instances at the same time may result in
 :< *Description*
 |  id
 :  int
-:  Dwl tag id.
+:  dwl tag id.
 |  name
 :  string
 :  The name of the tag (defaults to _id_ if not set).
