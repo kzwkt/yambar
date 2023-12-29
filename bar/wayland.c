@@ -1339,6 +1339,9 @@ surface_enter(void *data, struct wl_surface *wl_surface,
 {
     struct wayland_backend *backend = data;
 
+    free(backend->last_mapped_monitor);
+    backend->last_mapped_monitor = NULL;
+
     tll_foreach(backend->monitors, it) {
         struct monitor *mon = &it->item;
 
