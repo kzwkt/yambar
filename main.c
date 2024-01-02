@@ -131,7 +131,7 @@ print_usage(const char *prog_name)
            "  -c,--config=FILE                         alternative configuration file\n"
            "  -C,--validate                            verify configuration then quit\n"
            "  -p,--print-pid=FILE|FD                   print PID to file or FD\n"
-           "  -d,--log-level={info|warning|error|none} log level (info)\n"
+           "  -d,--log-level={info|warning|error|none} log level (warning)\n"
            "  -l,--log-colorize=[never|always|auto]    enable/disable colorization of log output on stderr\n"
            "  -s,--log-no-syslog                       disable syslog logging\n"
            "  -v,--version                             show the version number and quit\n");
@@ -197,7 +197,7 @@ main(int argc, char *const *argv)
     char *config_path = NULL;
     enum bar_backend backend = BAR_BACKEND_AUTO;
 
-    enum log_class log_level = LOG_CLASS_INFO;
+    enum log_class log_level = LOG_CLASS_WARNING;
     enum log_colorize log_colorize = LOG_COLORIZE_AUTO;
     bool log_syslog = true;
 

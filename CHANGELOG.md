@@ -14,6 +14,9 @@
 ## Unreleased
 ### Added
 ### Changed
+
+* log-level: default to `warning`
+
 ### Deprecated
 ### Removed
 ### Fixed
