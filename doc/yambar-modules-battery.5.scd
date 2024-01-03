@@ -65,12 +65,12 @@ the state *unknown* under other conditions.
 :  int
 :  no
 :  How much to scale down the battery charge amount. Some batteries
-   report too high resulting in bad discharge estimates
+   report too high resulting in bad discharge estimates. Default=1.
 |  smoothing-secs
 :  int
 :  no
 :  How many seconds to perform smoothing over for battery discharge
-   estimates.
+   estimates. Default=100s.
 
 # EXAMPLES
 
