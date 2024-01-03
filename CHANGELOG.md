@@ -31,9 +31,12 @@
 * map: conditions failing to match when they contain multiple, quoted
   tag values ([#302][302]).
 * Crash when hidden by an opaque window.
+* Bar not resizing itself when the screen resolution is changed
+  ([#330][330]).
 
 [311]: https://codeberg.org/dnkl/yambar/issues/311
 [302]: https://codeberg.org/dnkl/yambar/issues/302
+[330]: https://codeberg.org/dnkl/yambar/issues/330
 
 
 ### Security
