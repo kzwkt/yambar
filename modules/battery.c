@@ -61,7 +61,8 @@ struct private {
     long time_to_full;
 };
 
-int64_t difftimespec_ns(const struct timespec after, const struct timespec before)
+static int64_t
+difftimespec_ns(const struct timespec after, const struct timespec before)
 {
     return ((int64_t)after.tv_sec - (int64_t)before.tv_sec) * (int64_t)one_sec_in_ns
          + ((int64_t)after.tv_nsec - (int64_t)before.tv_nsec);
@@ -70,7 +71,7 @@ int64_t difftimespec_ns(const struct timespec after, const struct timespec befor
 // Linear Exponential Moving Average (unevenly spaced time series)
 // http://www.eckner.com/papers/Algorithms%20for%20Unevenly%20Spaced%20Time%20Series.pdf
 // Adapted from: https://github.com/andreas50/utsAlgorithms/blob/master/ema.c
-void
+static void
 ema_linear(struct current_state *state, struct current_state curr, long tau)
 {
     double w, w2, tmp;
