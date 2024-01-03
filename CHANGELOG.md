@@ -13,6 +13,12 @@
 
 ## Unreleased
 ### Added
+
+* battery: current smoothing, for improved discharge estimates.
+* battery: scale option, for batteries that report 'charge' at a
+  different scale than 'current'.
+
+
 ### Changed
 
 * log-level: default to `warning`
