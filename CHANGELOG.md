@@ -23,6 +23,8 @@
 ### Changed
 
 * log-level: default to `warning`
+* Read alternative config from pipes (e.g. `--config /dev/stdin`)
+  ([#340][340]).
 
 ### Deprecated
 ### Removed

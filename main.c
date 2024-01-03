@@ -223,8 +223,8 @@ main(int argc, char *const *argv)
             if (stat(optarg, &st) == -1) {
                 fprintf(stderr, "%s: invalid configuration file: %s\n", optarg, strerror(errno));
                 return EXIT_FAILURE;
-            } else if (!S_ISREG(st.st_mode)) {
-                fprintf(stderr, "%s: invalid configuration file: not a regular file\n",
+            } else if (!S_ISREG(st.st_mode) && !S_ISFIFO(st.st_mode)) {
+                fprintf(stderr, "%s: invalid configuration file: neither a regular file nor a pipe\n",
                         optarg);
                 return EXIT_FAILURE;
             }
