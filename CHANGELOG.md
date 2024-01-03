@@ -17,6 +17,7 @@
 * battery: current smoothing, for improved discharge estimates.
 * battery: scale option, for batteries that report 'charge' at a
   different scale than 'current'.
+* network: new `quality` tag (Wi-Fi only).
 
 
 ### Changed

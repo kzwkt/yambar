@@ -154,6 +154,16 @@ content(struct module *mod)
                 inet_ntop(AF_INET6, &it->item.addr.ipv6, ipv6_str, sizeof(ipv6_str));
     }
 
+    int quality = 0;
+    if (m->signal_strength_dbm != 0) {
+        if (m->signal_strength_dbm <= -100)
+            quality = 0;
+        else if (m->signal_strength_dbm >= -50)
+            quality = 100;
+        else
+            quality = 2 * (m->signal_strength_dbm + 100);
+    }
+
     struct tag_set tags = {
         .tags = (struct tag *[]){
             tag_new_string(mod, "name", m->iface),
@@ -165,12 +175,13 @@ content(struct module *mod)
             tag_new_string(mod, "ipv6", ipv6_str),
             tag_new_string(mod, "ssid", m->ssid),
             tag_new_int(mod, "signal", m->signal_strength_dbm),
+            tag_new_int_range(mod, "quality", quality, 0, 100),
             tag_new_int(mod, "rx-bitrate", m->rx_bitrate),
             tag_new_int(mod, "tx-bitrate", m->tx_bitrate),
             tag_new_float(mod, "dl-speed", m->dl_speed),
             tag_new_float(mod, "ul-speed", m->ul_speed),
         },
-        .count = 13,
+        .count = 14,
     };
 
     mtx_unlock(&mod->lock);

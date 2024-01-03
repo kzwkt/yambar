@@ -45,6 +45,9 @@ address.
 |  signal
 :  int
 :  Signal strength, in dBm (Wi-Fi only)
+|  quality
+:  range
+:  Quality of the signal, in percent (Wi-Fi only)
 |  rx-bitrate
 :  int
 :  RX bitrate, in bits/s
@@ -72,7 +75,7 @@ address.
 |  poll-interval
 :  int
 :  no
-:  Periodically (in milliseconds) update the signal, rx+tx bitrate, and
+:  Periodically (in milliseconds) update the signal, quality, rx+tx bitrate, and
    ul+dl speed tags (default=0). Setting it to 0 disables updates. Cannot be less
    than 250ms.
 
