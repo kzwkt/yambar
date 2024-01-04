@@ -18,13 +18,15 @@
 * battery: scale option, for batteries that report 'charge' at a
   different scale than 'current'.
 * network: new `quality` tag (Wi-Fi only).
+* Read alternative config from pipes (e.g. `--config /dev/stdin`)
+  ([#340][340]).
+
+[340]: https://codeberg.org/dnkl/yambar/pulls/340
 
 
 ### Changed
 
 * log-level: default to `warning`
-* Read alternative config from pipes (e.g. `--config /dev/stdin`)
-  ([#340][340]).
 
 ### Deprecated
 ### Removed
