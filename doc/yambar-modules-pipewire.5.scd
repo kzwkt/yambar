@@ -39,8 +39,16 @@ pipewire - Monitors pipewire for volume, mute/unmute, device change
 
 # CONFIGURATION
 
-No additional attributes supported, only the generic ones (see
-*GENERIC CONFIGURATION* in *yambar-modules*(5))
+[[ *Name*
+:[ *Type*
+:[ *Req*
+:< *Description*
+|  content
+:  particle
+:  yes
+:  Unlike other modules, _content_ is a template particle that will be
+   expanded twice (i.e. into a list of two elements). The first
+   element is the 'sink', and the second element the 'source'.
 
 
 # EXAMPLES
