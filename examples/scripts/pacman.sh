@@ -15,13 +15,13 @@
 # Exemples configuration:
 #  - script:
 #      path: /absolute/path/to/pacman.sh
-#      args: [] 
+#      args: []
 #      content: { string: { text: "{pacman} + {aur} = {pkg}" } }
 #
 # To display a message when there is no update:
 #  - script:
 #      path: /absolute/path/to/pacman.sh
-#      args: [] 
+#      args: []
 #      content:
 #        map:
 #          default: { string: { text: "{pacman} + {aur} = {pkg}" } }
@@ -47,9 +47,9 @@ while true; do
   # Change interval
   # NUMBER[SUFFIXE]
   # Possible suffix:
-  #  "s" seconds / "m" minutes / "h" hours / "d" days 
+  #  "s" seconds / "m" minutes / "h" hours / "d" days
   interval="1h"
-  
+
   # Change your aur manager
   aur_helper="paru"
 
@@ -62,7 +62,7 @@ while true; do
   else
     aur_num=$("${aur_helper}" -Qmu | wc -l)
   fi
-  
+
   pkg_num=$(( pacman_num + aur_num ))
 
   printf -- '%s\n' "pacman|int|${pacman_num}"
@@ -76,4 +76,3 @@ done
 
 unset -v interval aur_helper pacman_num aur_num pkg_num
 unset -f _err
-

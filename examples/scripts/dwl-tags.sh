@@ -136,4 +136,3 @@ done
 
 unset -v output title layout activetags selectedtags
 unset -v tags name
-
