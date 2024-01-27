@@ -569,12 +569,11 @@ handle_window_event(int sock, int type, const struct json_object *json, void *_m
     }
 
     const char *change_str = json_object_get_string(change);
-    bool is_new = strcmp(change_str, "new") == 0;
     bool is_focus = strcmp(change_str, "focus") == 0;
     bool is_close = strcmp(change_str, "close") == 0;
     bool is_title = strcmp(change_str, "title") == 0;
 
-    if (!is_new && !is_focus && !is_close && !is_title)
+    if (!is_focus && !is_close && !is_title)
         return true;
 
     mtx_lock(&mod->lock);
@@ -591,27 +590,6 @@ handle_window_event(int sock, int type, const struct json_object *json, void *_m
     assert(focused == 1);
     assert(ws != NULL);
 
-    if (is_close) {
-        free(ws->window.title);
-        free(ws->window.application);
-
-        ws->window.id = -1;
-        ws->window.title = ws->window.application = NULL;
-        ws->window.pid = -1;
-
-        /* May not be true, but e.g. a subsequent “focus” event will
-         * reset it... */
-        ws->empty = true;
-
-        m->dirty = true;
-        mtx_unlock(&mod->lock);
-        return true;
-
-    }
-
-    /* Non-close event - thus workspace cannot be empty */
-    ws->empty = false;
-
     struct json_object *container, *id, *name;
     if (!json_object_object_get_ex(json, "container", &container) ||
         !json_object_object_get_ex(container, "id", &id) ||
@@ -622,8 +600,21 @@ handle_window_event(int sock, int type, const struct json_object *json, void *_m
         return false;
     }
 
-    if (is_title && ws->window.id != json_object_get_int(id)) {
-        /* Ignore title changed event if it's not current window */
+    if ((is_close || is_title) && ws->window.id != json_object_get_int(id)) {
+        /* Ignore close event and title changed event if it's not current window */
+        mtx_unlock(&mod->lock);
+        return true;
+    }
+
+    if (is_close) {
+        free(ws->window.title);
+        free(ws->window.application);
+
+        ws->window.id = -1;
+        ws->window.title = ws->window.application = NULL;
+        ws->window.pid = -1;
+
+        m->dirty = true;
         mtx_unlock(&mod->lock);
         return true;
     }
