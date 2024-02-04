@@ -24,6 +24,8 @@ struct private
 {
     struct particle *label;
     uint16_t interval;
+    uint64_t mem_free;
+    uint64_t mem_total;
 };
 
 static void
@@ -79,15 +81,12 @@ static struct exposable *
 content(struct module *mod)
 {
     const struct private *p = mod->private;
-    uint64_t mem_free = 0;
-    uint64_t mem_used = 0;
-    uint64_t mem_total = 0;
 
-    if (!get_mem_stats(&mem_free, &mem_total)) {
-        LOG_ERR("unable to retrieve the memory stats");
-    }
+    mtx_lock(&mod->lock);
 
-    mem_used = mem_total - mem_free;
+    const uint64_t mem_free = p->mem_free;
+    const uint64_t mem_total = p->mem_total;
+    const uint64_t mem_used = mem_total - mem_free;
 
     double percent_used = ((double)mem_used * 100) / (mem_total + 1);
     double percent_free = ((double)mem_free * 100) / (mem_total + 1);
@@ -102,6 +101,7 @@ content(struct module *mod)
 
     struct exposable *exposable = p->label->instantiate(p->label, &tags);
     tag_set_destroy(&tags);
+    mtx_unlock(&mod->lock);
     return exposable;
 }
 
@@ -127,6 +127,13 @@ run(struct module *mod)
         if (fds[0].revents & POLLIN)
             break;
 
+        mtx_lock(&mod->lock);
+        p->mem_free = 0;
+        p->mem_total = 0;
+        if (!get_mem_stats(&p->mem_free, &p->mem_total)) {
+            LOG_ERR("unable to retrieve the memory stats");
+        }
+        mtx_unlock(&mod->lock);
         bar->refresh(bar);
     }
 

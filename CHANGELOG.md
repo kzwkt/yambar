@@ -39,11 +39,13 @@
 * Bar not resizing itself when the screen resolution is changed
   ([#330][330]).
 * i3/sway: incorrect empty/title state of workspaces ([#343][343]).
+* mem: state updated on each bar redraw ([#352][352]).
 
 [311]: https://codeberg.org/dnkl/yambar/issues/311
 [302]: https://codeberg.org/dnkl/yambar/issues/302
 [330]: https://codeberg.org/dnkl/yambar/issues/330
 [343]: https://codeberg.org/dnkl/yambar/issues/343
+[352]: https://codeberg.org/dnkl/yambar/issues/352
 
 
 ### Security
