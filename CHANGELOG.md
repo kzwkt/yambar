@@ -40,6 +40,7 @@
   ([#330][330]).
 * i3/sway: incorrect empty/title state of workspaces ([#343][343]).
 * mem: state updated on each bar redraw ([#352][352]).
+* script: buffer overflow when reading large amounts of data.
 
 [311]: https://codeberg.org/dnkl/yambar/issues/311
 [302]: https://codeberg.org/dnkl/yambar/issues/302

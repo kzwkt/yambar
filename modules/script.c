@@ -298,7 +298,7 @@ data_received(struct module *mod, const char *data, size_t len)
 {
     struct private *m = mod->private;
 
-    if (len > m->recv_buf.sz - m->recv_buf.idx) {
+    while (len > m->recv_buf.sz - m->recv_buf.idx) {
         size_t new_sz = m->recv_buf.sz == 0 ? 1024 : m->recv_buf.sz * 2;
         char *new_buf = realloc(m->recv_buf.data, new_sz);
 
