@@ -27,6 +27,10 @@
 ### Changed
 
 * log-level: default to `warning`
+* network: use dynlist instead of fixed name ([#355][355])
+
+[355]: https://codeberg.org/dnkl/yambar/pulls/355
+
 
 ### Deprecated
 ### Removed

@@ -6,11 +6,12 @@ network - This module monitors network connection state
 # DESCRIPTION
 
 This module monitors network connection state; disconnected/connected
-state and MAC/IP addresses.
+state and MAC/IP addresses. It instantiates the provided _content_
+particle for each network interface.
 
 Note: while the module internally tracks all assigned IPv4/IPv6
 addresses, it currently exposes only a single IPv4 and a single IPv6
-address.
+address per network interface.
 
 # TAGS
 
@@ -68,10 +69,18 @@ address.
 :[ *Type*
 :[ *Req*
 :< *Description*
-|  name
-:  string
-:  yes
-:  Name of network interface to monitor
+|  left-spacing
+:  int
+:  no
+:  Space, in pixels, in the left side of each rendered volume
+|  right-spacing
+:  int
+:  no
+:  Space, in pixels, on the right side of each rendered volume
+|  spacing
+:  int
+:  no
+:  Short-hand for setting both _left-spacing_ and _right-spacing_
 |  poll-interval
 :  int
 :  no
@@ -86,9 +95,13 @@ address.
 bar:
   left:
     - network:
-        name: wlp3s0
         content:
-          string: {text: "{name}: {state} ({ipv4})"}
+          map:
+            default:
+              string: {text: "{name}: {state} ({ipv4})"}
+            conditions:
+              ipv4 == "":
+                string: {text: "{name}: {state}"}
 ```
 
 # SEE ALSO

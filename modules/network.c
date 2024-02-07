@@ -30,9 +30,10 @@
 #include "../config.h"
 #include "../config-verify.h"
 #include "../module.h"
+#include "../particles/dynlist.h"
 #include "../plugin.h"
 
-#define UNUSED __attribute__((unused))
+#define max(x, y) ((x) > (y) ? (x) : (y))
 
 static const long min_poll_interval = 250;
 
@@ -49,25 +50,12 @@ struct af_addr {
     } addr;
 };
 
-struct private {
-    char *iface;
-    struct particle *label;
-    int poll_interval;
+struct iface {
+    char *name;
 
-    int genl_sock;
-    int rt_sock;
-    int urandom_fd;
+    uint32_t get_stats_seq_nr;
 
-    struct {
-        uint16_t family_id;
-        uint32_t get_interface_seq_nr;
-        uint32_t get_station_seq_nr;
-        uint32_t get_scan_seq_nr;
-    } nl80211;
-
-    bool get_addresses;
-
-    int ifindex;
+    int index;
     uint8_t mac[6];
     bool carrier;
     uint8_t state;  /* IFLA_OPERSTATE */
@@ -88,6 +76,36 @@ struct private {
     uint64_t dl_bits;
 };
 
+struct private {
+    struct particle *label;
+    int poll_interval;
+
+    int left_spacing;
+    int right_spacing;
+
+    bool get_addresses;
+
+    int genl_sock;
+    int rt_sock;
+    int urandom_fd;
+
+    struct {
+        uint16_t family_id;
+        uint32_t get_interface_seq_nr;
+        uint32_t get_scan_seq_nr;
+    } nl80211;
+
+    tll(struct iface) ifaces;
+};
+
+static void
+free_iface(struct iface iface)
+{
+    tll_free(iface.addrs);
+    free(iface.ssid);
+    free(iface.name);
+}
+
 static void
 destroy(struct module *mod)
 {
@@ -100,22 +118,17 @@ destroy(struct module *mod)
     if (m->urandom_fd >= 0)
         close(m->urandom_fd);
 
-    tll_free(m->addrs);
-    free(m->ssid);
-    free(m->iface);
-    free(m);
+    tll_foreach(m->ifaces, it)
+        free_iface(it->item);
 
+    free(m);
     module_default_destroy(mod);
 }
 
 static const char *
 description(const struct module *mod)
 {
-    static char desc[32];
-    const struct private *m = mod->private;
-
-    snprintf(desc, sizeof(desc), "net(%s)", m->iface);
-    return desc;
+    return "network";
 }
 
 static struct exposable *
@@ -125,70 +138,78 @@ content(struct module *mod)
 
     mtx_lock(&mod->lock);
 
-    const char *state = NULL;
-    switch (m->state) {
-    case IF_OPER_UNKNOWN:         state = "unknown"; break;
-    case IF_OPER_NOTPRESENT:      state = "not present"; break;
-    case IF_OPER_DOWN:            state = "down"; break;
-    case IF_OPER_LOWERLAYERDOWN:  state = "lower layers down"; break;
-    case IF_OPER_TESTING:         state = "testing"; break;
-    case IF_OPER_DORMANT:         state = "dormant"; break;
-    case IF_OPER_UP:              state = "up"; break;
-    default:                      state = "unknown"; break;
+    struct exposable *exposables[max(tll_length(m->ifaces), 1)];
+    size_t idx = 0;
+
+    tll_foreach(m->ifaces, it) {
+        struct iface *iface = &it->item;
+
+        const char *state = NULL;
+        switch (iface->state) {
+        case IF_OPER_UNKNOWN:         state = "unknown"; break;
+        case IF_OPER_NOTPRESENT:      state = "not present"; break;
+        case IF_OPER_DOWN:            state = "down"; break;
+        case IF_OPER_LOWERLAYERDOWN:  state = "lower layers down"; break;
+        case IF_OPER_TESTING:         state = "testing"; break;
+        case IF_OPER_DORMANT:         state = "dormant"; break;
+        case IF_OPER_UP:              state = "up"; break;
+        default:                      state = "unknown"; break;
+        }
+
+        char mac_str[6 * 2 + 5 + 1];
+        char ipv4_str[INET_ADDRSTRLEN] = {0};
+        char ipv6_str[INET6_ADDRSTRLEN] = {0};
+
+        snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x",
+                 iface->mac[0], iface->mac[1], iface->mac[2], iface->mac[3], iface->mac[4], iface->mac[5]);
+
+        /* TODO: this exposes the *last* added address of each kind. Can
+         * we expose all in some way? */
+        tll_foreach(iface->addrs, it) {
+            if (it->item.family == AF_INET)
+                inet_ntop(AF_INET, &it->item.addr.ipv4, ipv4_str, sizeof(ipv4_str));
+            else if (it->item.family == AF_INET6)
+                if(!IN6_IS_ADDR_LINKLOCAL(&it->item.addr.ipv6))
+                    inet_ntop(AF_INET6, &it->item.addr.ipv6, ipv6_str, sizeof(ipv6_str));
+        }
+
+        int quality = 0;
+        if (iface->signal_strength_dbm != 0) {
+            if (iface->signal_strength_dbm <= -100)
+                quality = 0;
+            else if (iface->signal_strength_dbm >= -50)
+                quality = 100;
+            else
+                quality = 2 * (iface->signal_strength_dbm + 100);
+        }
+
+        struct tag_set tags = {
+            .tags = (struct tag *[]){
+                tag_new_string(mod, "name", iface->name),
+                tag_new_int(mod, "index", iface->index),
+                tag_new_bool(mod, "carrier", iface->carrier),
+                tag_new_string(mod, "state", state),
+                tag_new_string(mod, "mac", mac_str),
+                tag_new_string(mod, "ipv4", ipv4_str),
+                tag_new_string(mod, "ipv6", ipv6_str),
+                tag_new_string(mod, "ssid", iface->ssid),
+                tag_new_int(mod, "signal", iface->signal_strength_dbm),
+                tag_new_int_range(mod, "quality", quality, 0, 100),
+                tag_new_int(mod, "rx-bitrate", iface->rx_bitrate),
+                tag_new_int(mod, "tx-bitrate", iface->tx_bitrate),
+                tag_new_float(mod, "dl-speed", iface->dl_speed),
+                tag_new_float(mod, "ul-speed", iface->ul_speed),
+            },
+            .count = 14,
+        };
+        exposables[idx++] = m->label->instantiate(m->label, &tags);
+        tag_set_destroy(&tags);
     }
-
-    char mac_str[6 * 2 + 5 + 1];
-    char ipv4_str[INET_ADDRSTRLEN] = {0};
-    char ipv6_str[INET6_ADDRSTRLEN] = {0};
-
-    snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x",
-             m->mac[0], m->mac[1], m->mac[2], m->mac[3], m->mac[4], m->mac[5]);
-
-    /* TODO: this exposes the *last* added address of each kind. Can
-     * we expose all in some way? */
-    tll_foreach(m->addrs, it) {
-        if (it->item.family == AF_INET)
-            inet_ntop(AF_INET, &it->item.addr.ipv4, ipv4_str, sizeof(ipv4_str));
-        else if (it->item.family == AF_INET6)
-            if(!IN6_IS_ADDR_LINKLOCAL(&it->item.addr.ipv6))
-                inet_ntop(AF_INET6, &it->item.addr.ipv6, ipv6_str, sizeof(ipv6_str));
-    }
-
-    int quality = 0;
-    if (m->signal_strength_dbm != 0) {
-        if (m->signal_strength_dbm <= -100)
-            quality = 0;
-        else if (m->signal_strength_dbm >= -50)
-            quality = 100;
-        else
-            quality = 2 * (m->signal_strength_dbm + 100);
-    }
-
-    struct tag_set tags = {
-        .tags = (struct tag *[]){
-            tag_new_string(mod, "name", m->iface),
-            tag_new_int(mod, "index", m->ifindex),
-            tag_new_bool(mod, "carrier", m->carrier),
-            tag_new_string(mod, "state", state),
-            tag_new_string(mod, "mac", mac_str),
-            tag_new_string(mod, "ipv4", ipv4_str),
-            tag_new_string(mod, "ipv6", ipv6_str),
-            tag_new_string(mod, "ssid", m->ssid),
-            tag_new_int(mod, "signal", m->signal_strength_dbm),
-            tag_new_int_range(mod, "quality", quality, 0, 100),
-            tag_new_int(mod, "rx-bitrate", m->rx_bitrate),
-            tag_new_int(mod, "tx-bitrate", m->tx_bitrate),
-            tag_new_float(mod, "dl-speed", m->dl_speed),
-            tag_new_float(mod, "ul-speed", m->ul_speed),
-        },
-        .count = 14,
-    };
 
     mtx_unlock(&mod->lock);
 
-    struct exposable *exposable =  m->label->instantiate(m->label, &tags);
-    tag_set_destroy(&tags);
-    return exposable;
+    return dynlist_exposable_new(
+        exposables, idx, m->left_spacing, m->right_spacing);
 }
 
 /* Returns a value suitable for nl_pid/nlmsg_pid */
@@ -279,8 +300,8 @@ send_rt_request(struct private *m, int request)
     };
 
     if (!send_nlmsg(m->rt_sock, &req, req.hdr.nlmsg_len)) {
-        LOG_ERRNO("%s: failed to send netlink RT request (%d)",
-                  m->iface, request);
+        LOG_ERRNO("failed to send netlink RT request (%d)",
+                  request);
         return false;
     }
 
@@ -288,8 +309,22 @@ send_rt_request(struct private *m, int request)
 }
 
 static bool
-send_rt_getstats_request(struct private *m)
+send_rt_getstats_request(struct private *m, struct iface *iface)
 {
+    if (iface->get_stats_seq_nr > 0) {
+        LOG_DBG(
+            "%s: RT get-stats request already in progress", iface->name);
+        return true;
+    }
+
+    LOG_DBG("%s: sending RT get-stats request", iface->name);
+
+    uint32_t seq;
+    if (read(m->urandom_fd, &seq, sizeof(seq)) != sizeof(seq)) {
+        LOG_ERRNO("failed to read from /dev/urandom");
+        return false;
+    }
+
     struct {
         struct nlmsghdr hdr;
         struct if_stats_msg rt;
@@ -298,12 +333,12 @@ send_rt_getstats_request(struct private *m)
             .nlmsg_len = NLMSG_LENGTH(sizeof(req.rt)),
             .nlmsg_type = RTM_GETSTATS,
             .nlmsg_flags = NLM_F_REQUEST,
-            .nlmsg_seq = 1,
+            .nlmsg_seq = seq,
             .nlmsg_pid = nl_pid_value(),
         },
 
         .rt = {
-            .ifindex = m->ifindex,
+            .ifindex = iface->index,
             .filter_mask = IFLA_STATS_LINK_64,
             .family = AF_UNSPEC,
         },
@@ -311,9 +346,10 @@ send_rt_getstats_request(struct private *m)
 
     if (!send_nlmsg(m->rt_sock, &req, req.hdr.nlmsg_len)) {
         LOG_ERRNO("%s: failed to send netlink RT getstats request (%d)",
-                m->iface, RTM_GETSTATS);
+                iface->name, RTM_GETSTATS);
         return false;
     }
+    iface->get_stats_seq_nr = seq;
     return true;
 }
 
@@ -361,8 +397,7 @@ send_ctrl_get_family_request(struct private *m)
         "");
 
     if (!send_nlmsg(m->genl_sock, &req, req.hdr.nlmsg_len)) {
-        LOG_ERRNO("%s: failed to send netlink ctrl-get-family request",
-                  m->iface);
+        LOG_ERRNO("failed to send netlink ctrl-get-family request");
         return false;
     }
 
@@ -370,10 +405,68 @@ send_ctrl_get_family_request(struct private *m)
 }
 
 static bool
-send_nl80211_request(struct private *m, uint8_t cmd, uint16_t flags, uint32_t seq)
+send_nl80211_request(struct private *m, uint8_t cmd, uint32_t seq)
 {
-    if (m->ifindex < 0)
+    if (m->nl80211.family_id == (uint16_t)-1)
         return false;
+
+    const struct {
+        struct nlmsghdr hdr;
+        struct {
+            struct genlmsghdr genl;
+        } msg __attribute__((aligned(NLMSG_ALIGNTO)));
+    } req = {
+        .hdr = {
+            .nlmsg_len = NLMSG_LENGTH(sizeof(req.msg)),
+            .nlmsg_type = m->nl80211.family_id,
+            .nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP,
+            .nlmsg_seq = seq,
+            .nlmsg_pid = nl_pid_value(),
+        },
+
+        .msg = {
+            .genl = {
+                .cmd = cmd,
+                .version = 1,
+            },
+        },
+    };
+
+    if (!send_nlmsg(m->genl_sock, &req, req.hdr.nlmsg_len)) {
+        LOG_ERRNO("failed to send netlink nl80211 get-inteface request");
+        return false;
+    }
+
+    return true;
+}
+
+static bool
+send_nl80211_get_interface(struct private *m)
+{
+    if (m->nl80211.get_interface_seq_nr > 0) {
+        LOG_DBG("nl80211 get-interface request already in progress");
+        return true;
+    }
+
+    uint32_t seq;
+    if (read(m->urandom_fd, &seq, sizeof(seq)) != sizeof(seq)) {
+        LOG_ERRNO("failed to read from /dev/urandom");
+        return false;
+    }
+
+    LOG_DBG("sending nl80211 get-interface request %d", seq);
+
+    if (!send_nl80211_request(m, NL80211_CMD_GET_INTERFACE, seq))
+        return false;
+
+    m->nl80211.get_interface_seq_nr = seq;
+    return true;
+}
+
+static bool
+send_nl80211_get_station(struct private *m, struct iface *iface)
+{
+    LOG_DBG("sending nl80211 get-station request");
 
     if (m->nl80211.family_id == (uint16_t)-1)
         return false;
@@ -391,14 +484,14 @@ send_nl80211_request(struct private *m, uint8_t cmd, uint16_t flags, uint32_t se
         .hdr = {
             .nlmsg_len = NLMSG_LENGTH(sizeof(req.msg)),
             .nlmsg_type = m->nl80211.family_id,
-            .nlmsg_flags = flags,
-            .nlmsg_seq = seq,
+            .nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP,
+            .nlmsg_seq = 1,
             .nlmsg_pid = nl_pid_value(),
         },
 
         .msg = {
             .genl = {
-                .cmd = cmd,
+                .cmd = NL80211_CMD_GET_STATION,
                 .version = 1,
             },
 
@@ -408,14 +501,13 @@ send_nl80211_request(struct private *m, uint8_t cmd, uint16_t flags, uint32_t se
                     .nla_len = sizeof(req.msg.ifindex),
                 },
 
-                .index = m->ifindex,
+                .index = iface->index,
             },
         },
     };
 
     if (!send_nlmsg(m->genl_sock, &req, req.hdr.nlmsg_len)) {
-        LOG_ERRNO("%s: failed to send netlink nl80211 get-inteface request",
-                  m->iface);
+        LOG_ERRNO("failed to send netlink nl80211 get-inteface request");
         return false;
     }
 
@@ -423,65 +515,12 @@ send_nl80211_request(struct private *m, uint8_t cmd, uint16_t flags, uint32_t se
 }
 
 static bool
-send_nl80211_get_interface(struct private *m)
-{
-    if (m->nl80211.get_interface_seq_nr > 0) {
-        LOG_DBG(
-            "%s: nl80211 get-interface request already in progress", m->iface);
-        return true;
-    }
-
-    LOG_DBG("%s: sending nl80211 get-interface request", m->iface);
-
-    uint32_t seq;
-    if (read(m->urandom_fd, &seq, sizeof(seq)) != sizeof(seq)) {
-        LOG_ERRNO("failed to read from /dev/urandom");
-        return false;
-    }
-
-    if (send_nl80211_request(m, NL80211_CMD_GET_INTERFACE, NLM_F_REQUEST, seq)) {
-        m->nl80211.get_interface_seq_nr = seq;
-        return true;
-    } else
-        return false;
-}
-
-static bool
-send_nl80211_get_station(struct private *m)
-{
-    if (m->nl80211.get_station_seq_nr > 0) {
-        LOG_DBG(
-            "%s: nl80211 get-station request already in progress", m->iface);
-        return true;
-    }
-
-    LOG_DBG("%s: sending nl80211 get-station request", m->iface);
-
-    uint32_t seq;
-    if (read(m->urandom_fd, &seq, sizeof(seq)) != sizeof(seq)) {
-        LOG_ERRNO("failed to read from /dev/urandom");
-        return false;
-    }
-
-    if (send_nl80211_request(
-            m, NL80211_CMD_GET_STATION, NLM_F_REQUEST | NLM_F_DUMP, seq))
-    {
-        m->nl80211.get_station_seq_nr = seq;
-        return true;
-    } else
-        return false;
-}
-
-static bool
 send_nl80211_get_scan(struct private *m)
 {
     if (m->nl80211.get_scan_seq_nr > 0) {
-        LOG_ERR(
-            "%s: nl80211 get-scan request already in progress", m->iface);
+        LOG_ERR("nl80211 get-scan request already in progress");
         return true;
     }
-
-    LOG_DBG("%s: sending nl80211 get-scan request", m->iface);
 
     uint32_t seq;
     if (read(m->urandom_fd, &seq, sizeof(seq)) != sizeof(seq)) {
@@ -489,43 +528,13 @@ send_nl80211_get_scan(struct private *m)
         return false;
     }
 
-    if (send_nl80211_request(
-            m, NL80211_CMD_GET_SCAN, NLM_F_REQUEST | NLM_F_DUMP, seq))
-    {
-        m->nl80211.get_scan_seq_nr = seq;
-        return true;
-    } else
+    LOG_DBG("sending nl80211 get-scan request %d", seq);
+
+    if (!send_nl80211_request(m, NL80211_CMD_GET_SCAN, seq))
         return false;
-}
 
-static bool
-find_my_ifindex(struct module *mod, const struct ifinfomsg *msg, size_t len)
-{
-    struct private *m = mod->private;
-
-    for (const struct rtattr *attr = IFLA_RTA(msg);
-         RTA_OK(attr, len);
-         attr = RTA_NEXT(attr, len))
-    {
-        switch (attr->rta_type) {
-        case IFLA_IFNAME:
-            if (strcmp((const char *)RTA_DATA(attr), m->iface) == 0) {
-                LOG_INFO("%s: ifindex=%d", m->iface, msg->ifi_index);
-
-                mtx_lock(&mod->lock);
-                m->ifindex = msg->ifi_index;
-                mtx_unlock(&mod->lock);
-
-                send_nl80211_get_interface(m);
-                send_nl80211_get_station(m);
-                return true;
-            }
-
-            return false;
-        }
-    }
-
-    return false;
+    m->nl80211.get_scan_seq_nr = seq;
+    return true;
 }
 
 static void
@@ -536,54 +545,73 @@ handle_link(struct module *mod, uint16_t type,
 
     struct private *m = mod->private;
 
-    if (m->ifindex == -1) {
-        /* We don't know our own ifindex yet. Let's see if we can find
-         * it in the message */
-        if (!find_my_ifindex(mod, msg, len)) {
-            /* Nope, message wasn't for us (IFLA_IFNAME mismatch) */
-            return;
+    if (type == RTM_DELLINK) {
+        tll_foreach(m->ifaces, it) {
+            if (msg->ifi_index != it->item.index)
+                continue;
+            mtx_lock(&mod->lock);
+            tll_remove_and_free(m->ifaces, it, free_iface);
+            mtx_unlock(&mod->lock);
+            break;
         }
-    }
 
-    assert(m->ifindex >= 0);
-
-    if (msg->ifi_index != m->ifindex) {
-        /* Not for us */
+        mod->bar->refresh(mod->bar);
         return;
     }
 
-    bool update_bar = false;
+    struct iface *iface = NULL;
+    tll_foreach(m->ifaces, it) {
+        if (msg->ifi_index != it->item.index)
+            continue;
+        iface = &it->item;
+        break;
+    }
+
+    if (iface == NULL) {
+      mtx_lock(&mod->lock);
+      tll_push_back(m->ifaces,
+          ((struct iface){
+              .index = msg->ifi_index,
+              .state = IF_OPER_DOWN,
+              .addrs = tll_init(),
+              }));
+      mtx_unlock(&mod->lock);
+      iface = &tll_back(m->ifaces);
+    }
 
     for (const struct rtattr *attr = IFLA_RTA(msg);
          RTA_OK(attr, len);
          attr = RTA_NEXT(attr, len))
     {
         switch (attr->rta_type) {
+        case IFLA_IFNAME:
+            mtx_lock(&mod->lock);
+            iface->name = strdup((const char *)RTA_DATA(attr));
+            LOG_DBG("%s: index=%d", iface->name, iface->index);
+            mtx_unlock(&mod->lock);
         case IFLA_OPERSTATE: {
             uint8_t operstate = *(const uint8_t *)RTA_DATA(attr);
-            if (m->state == operstate)
+            if (iface->state == operstate)
                 break;
 
-            LOG_DBG("%s: IFLA_OPERSTATE: %hhu -> %hhu", m->iface, m->state, operstate);
+            LOG_DBG("%s: IFLA_OPERSTATE: %hhu -> %hhu", iface->name, iface->state, operstate);
 
             mtx_lock(&mod->lock);
-            m->state = operstate;
+            iface->state = operstate;
             mtx_unlock(&mod->lock);
-            update_bar = true;
             break;
         }
 
         case IFLA_CARRIER: {
             uint8_t carrier = *(const uint8_t *)RTA_DATA(attr);
-            if (m->carrier == carrier)
+            if (iface->carrier == carrier)
                 break;
 
-            LOG_DBG("%s: IFLA_CARRIER: %hhu -> %hhu", m->iface, m->carrier, carrier);
+            LOG_DBG("%s: IFLA_CARRIER: %hhu -> %hhu", iface->name, iface->carrier, carrier);
 
             mtx_lock(&mod->lock);
-            m->carrier = carrier;
+            iface->carrier = carrier;
             mtx_unlock(&mod->lock);
-            update_bar = true;
             break;
         }
 
@@ -592,24 +620,28 @@ handle_link(struct module *mod, uint16_t type,
                 break;
 
             const uint8_t *mac = RTA_DATA(attr);
-            if (memcmp(m->mac, mac, sizeof(m->mac)) == 0)
+            if (memcmp(iface->mac, mac, sizeof(iface->mac)) == 0)
                 break;
 
             LOG_DBG("%s: IFLA_ADDRESS: %02x:%02x:%02x:%02x:%02x:%02x",
-                    m->iface,
+                    iface->name,
                     mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
             mtx_lock(&mod->lock);
-            memcpy(m->mac, mac, sizeof(m->mac));
+            memcpy(iface->mac, mac, sizeof(iface->mac));
             mtx_unlock(&mod->lock);
-            update_bar = true;
             break;
         }
         }
     }
 
-    if (update_bar)
-        mod->bar->refresh(mod->bar);
+    assert(iface->name != NULL);
+
+    /* Reset address initialization */
+    m->get_addresses = true;
+
+    send_nl80211_get_interface(m);
+    mod->bar->refresh(mod->bar);
 }
 
 static void
@@ -620,14 +652,21 @@ handle_address(struct module *mod, uint16_t type,
 
     struct private *m = mod->private;
 
-    assert(m->ifindex >= 0);
+    bool update_bar = false;
 
-    if (msg->ifa_index != m->ifindex) {
-        /* Not for us */
-        return;
+    struct iface *iface = NULL;
+
+    tll_foreach(m->ifaces, it) {
+        if (msg->ifa_index != it->item.index)
+            continue;
+        iface = &it->item;
+        break;
     }
 
-    bool update_bar = false;
+    if (iface == NULL) {
+        LOG_ERR("failed to find network interface with index %d. Probaly a yambar bug", msg->ifa_index);
+        return;
+    }
 
     for (const struct rtattr *attr = IFA_RTA(msg);
          RTA_OK(attr, len);
@@ -642,21 +681,21 @@ handle_address(struct module *mod, uint16_t type,
             char s[INET6_ADDRSTRLEN];
             inet_ntop(msg->ifa_family, raw_addr, s, sizeof(s));
 #endif
-            LOG_DBG("%s: IFA_ADDRESS (%s): %s", m->iface,
+            LOG_DBG("%s: IFA_ADDRESS (%s): %s", iface->name,
                     type == RTM_NEWADDR ? "add" : "del", s);
 
             mtx_lock(&mod->lock);
 
             if (type == RTM_DELADDR) {
                 /* Find address in our list and remove it */
-                tll_foreach(m->addrs, it) {
+                tll_foreach(iface->addrs, it) {
                     if (it->item.family != msg->ifa_family)
                         continue;
 
                     if (memcmp(&it->item.addr, raw_addr, addr_len) != 0)
                         continue;
 
-                    tll_remove(m->addrs, it);
+                    tll_remove(iface->addrs, it);
                     update_bar = true;
                     break;
                 }
@@ -664,7 +703,7 @@ handle_address(struct module *mod, uint16_t type,
                 /* Append address to our list */
                 struct af_addr a = {.family = msg->ifa_family};
                 memcpy(&a.addr, raw_addr, addr_len);
-                tll_push_back(m->addrs, a);
+                tll_push_back(iface->addrs, a);
                 update_bar = true;
             }
 
@@ -679,9 +718,10 @@ handle_address(struct module *mod, uint16_t type,
 }
 
 static bool
-foreach_nlattr(struct module *mod, const struct genlmsghdr *genl, size_t len,
-               bool (*cb)(struct module *mod, uint16_t type, bool nested,
-                          const void *payload, size_t len))
+foreach_nlattr(struct module *mod, struct iface *iface, const struct genlmsghdr *genl, size_t len,
+               bool (*cb)(struct module *mod, struct iface *iface, uint16_t type, bool nested,
+                          const void *payload, size_t len, void *ctx),
+               void *ctx)
 {
     const uint8_t *raw = (const uint8_t *)genl + GENL_HDRLEN;
     const uint8_t *end = (const uint8_t *)genl + len;
@@ -694,7 +734,7 @@ foreach_nlattr(struct module *mod, const struct genlmsghdr *genl, size_t len,
         bool nested = (attr->nla_type & NLA_F_NESTED) != 0;;
         const void *payload = raw + NLA_HDRLEN;
 
-        if (!cb(mod, type, nested, payload, attr->nla_len - NLA_HDRLEN))
+        if (!cb(mod, iface, type, nested, payload, attr->nla_len - NLA_HDRLEN, ctx))
             return false;
     }
 
@@ -702,8 +742,8 @@ foreach_nlattr(struct module *mod, const struct genlmsghdr *genl, size_t len,
 }
 
 static bool
-foreach_nlattr_nested(struct module *mod, const void *parent_payload, size_t len,
-                      bool (*cb)(struct module *mod, uint16_t type,
+foreach_nlattr_nested(struct module *mod, struct iface *iface, const void *parent_payload, size_t len,
+                      bool (*cb)(struct module *mod, struct iface *iface, uint16_t type,
                                  bool nested, const void *payload, size_t len,
                                  void *ctx),
                       void *ctx)
@@ -719,7 +759,7 @@ foreach_nlattr_nested(struct module *mod, const void *parent_payload, size_t len
         bool nested = (attr->nla_type & NLA_F_NESTED) != 0;
         const void *payload = raw + NLA_HDRLEN;
 
-        if (!cb(mod, type, nested, payload, attr->nla_len - NLA_HDRLEN, ctx))
+        if (!cb(mod, iface, type, nested, payload, attr->nla_len - NLA_HDRLEN, ctx))
             return false;
     }
 
@@ -732,10 +772,9 @@ struct mcast_group {
 };
 
 static bool
-parse_mcast_group(struct module *mod, uint16_t type, bool nested,
+parse_mcast_group(struct module *mod, struct iface *iface, uint16_t type, bool nested,
                   const void *payload, size_t len, void *_ctx)
 {
-    struct private *m = mod->private;
     struct mcast_group *ctx = _ctx;
 
     switch (type) {
@@ -750,8 +789,8 @@ parse_mcast_group(struct module *mod, uint16_t type, bool nested,
     }
 
     default:
-        LOG_WARN("%s: unrecognized GENL MCAST GRP attribute: "
-                 "type=%hu, nested=%d, len=%zu", m->iface, type, nested, len);
+        LOG_WARN("unrecognized GENL MCAST GRP attribute: "
+                 "type=%hu, nested=%d, len=%zu", type, nested, len);
         break;
     }
 
@@ -759,13 +798,13 @@ parse_mcast_group(struct module *mod, uint16_t type, bool nested,
 }
 
 static bool
-parse_mcast_groups(struct module *mod, uint16_t type, bool nested,
+parse_mcast_groups(struct module *mod, struct iface *iface, uint16_t type, bool nested,
                    const void *payload, size_t len, void *_ctx)
 {
     struct private *m = mod->private;
 
     struct mcast_group group = {0};
-    foreach_nlattr_nested(mod, payload, len, &parse_mcast_group, &group);
+    foreach_nlattr_nested(mod, NULL, payload, len, &parse_mcast_group, &group);
 
     LOG_DBG("MCAST: %s -> %u", group.name, group.id);
 
@@ -787,8 +826,8 @@ parse_mcast_groups(struct module *mod, uint16_t type, bool nested,
 }
 
 static bool
-handle_genl_ctrl(struct module *mod, uint16_t type, bool nested,
-                 const void *payload, size_t len)
+handle_genl_ctrl(struct module *mod, struct iface *iface, uint16_t type, bool nested,
+                 const void *payload, size_t len, void *_ctx)
 {
     struct private *m = mod->private;
 
@@ -796,7 +835,6 @@ handle_genl_ctrl(struct module *mod, uint16_t type, bool nested,
     case CTRL_ATTR_FAMILY_ID: {
         m->nl80211.family_id = *(const uint16_t *)payload;
         send_nl80211_get_interface(m);
-        send_nl80211_get_station(m);
         break;
     }
 
@@ -805,12 +843,38 @@ handle_genl_ctrl(struct module *mod, uint16_t type, bool nested,
         break;
 
     case CTRL_ATTR_MCAST_GROUPS:
-        foreach_nlattr_nested(mod, payload, len, &parse_mcast_groups, NULL);
+        foreach_nlattr_nested(mod, NULL, payload, len, &parse_mcast_groups, NULL);
         break;
 
     default:
-        LOG_DBG("%s: unrecognized GENL CTRL attribute: "
-                "type=%hu, nested=%d, len=%zu", m->iface, type, nested, len);
+        LOG_DBG("unrecognized GENL CTRL attribute: "
+                "type=%hu, nested=%d, len=%zu", type, nested, len);
+        break;
+    }
+
+    return true;
+}
+
+
+static bool
+find_nl80211_iface(struct module *mod, struct iface *_iface, uint16_t type, bool nested,
+                             const void *payload, size_t len, void *ctx)
+{
+    struct private *m = mod->private;
+    struct iface **iface = ctx;
+
+    switch (type) {
+    case NL80211_ATTR_IFINDEX:
+        if (*iface != NULL)
+            if (*(uint32_t *)payload == (*iface)->index)
+                return false;
+        tll_foreach(m->ifaces, it) {
+            if (*(uint32_t *)payload != it->item.index)
+                continue;
+            *iface = &it->item;
+            return false;
+        }
+        LOG_ERR("could not find interface with index %d", *(uint32_t *)payload);
         break;
     }
 
@@ -818,46 +882,23 @@ handle_genl_ctrl(struct module *mod, uint16_t type, bool nested,
 }
 
 static bool
-check_for_nl80211_ifindex(struct module *mod, uint16_t type, bool nested,
-                          const void *payload, size_t len)
+handle_nl80211_new_interface(struct module *mod, struct iface *iface, uint16_t type, bool nested,
+                             const void *payload, size_t len, void *_ctx)
 {
-    struct private *m = mod->private;
-
     switch (type) {
     case NL80211_ATTR_IFINDEX:
-        return *(uint32_t *)payload == m->ifindex;
-    }
-
-    return true;
-}
-
-static bool
-nl80211_is_for_us(struct module *mod, const struct genlmsghdr *genl,
-                   size_t msg_size)
-{
-    return foreach_nlattr(mod, genl, msg_size, &check_for_nl80211_ifindex);
-}
-
-static bool
-handle_nl80211_new_interface(struct module *mod, uint16_t type, bool nested,
-                             const void *payload, size_t len)
-{
-    struct private *m = mod->private;
-
-    switch (type) {
-    case NL80211_ATTR_IFINDEX:
-        assert(*(uint32_t *)payload == m->ifindex);
+        assert(*(uint32_t *)payload == iface->index);
         break;
 
     case NL80211_ATTR_SSID: {
         const char *ssid = payload;
 
-        if (m->ssid == NULL || strncmp(m->ssid, ssid, len) != 0)
-            LOG_INFO("%s: SSID: %.*s", m->iface, (int)len, ssid);
+        if (iface->ssid == NULL || strncmp(iface->ssid, ssid, len) != 0)
+            LOG_INFO("%s: SSID: %.*s", iface->name, (int)len, ssid);
 
         mtx_lock(&mod->lock);
-        free(m->ssid);
-        m->ssid = strndup(ssid, len);
+        free(iface->ssid);
+        iface->ssid = strndup(ssid, len);
         mtx_unlock(&mod->lock);
 
         mod->bar->refresh(mod->bar);
@@ -866,7 +907,7 @@ handle_nl80211_new_interface(struct module *mod, uint16_t type, bool nested,
 
     default:
         LOG_DBG("%s: unrecognized nl80211 attribute: "
-                "type=%hu, nested=%d, len=%zu", m->iface, type, nested, len);
+                "type=%hu, nested=%d, len=%zu", iface->name, type, nested, len);
         break;
     }
 
@@ -878,10 +919,9 @@ struct rate_info_ctx {
 };
 
 static bool
-handle_nl80211_rate_info(struct module *mod, uint16_t type, bool nested,
+handle_nl80211_rate_info(struct module *mod, struct iface *iface, uint16_t type, bool nested,
                          const void *payload, size_t len, void *_ctx)
 {
-    struct private *m UNUSED = mod->private;
     struct rate_info_ctx *ctx = _ctx;
 
     switch (type) {
@@ -902,7 +942,7 @@ handle_nl80211_rate_info(struct module *mod, uint16_t type, bool nested,
 
     default:
         LOG_DBG("%s: unrecognized nl80211 rate info attribute: "
-                "type=%hu, nested=%d, len=%zu", m->iface, type, nested, len);
+                "type=%hu, nested=%d, len=%zu", iface->name, type, nested, len);
         break;
     }
 
@@ -914,10 +954,9 @@ struct station_info_ctx {
 };
 
 static bool
-handle_nl80211_station_info(struct module *mod, uint16_t type, bool nested,
+handle_nl80211_station_info(struct module *mod, struct iface *iface, uint16_t type, bool nested,
                             const void *payload, size_t len, void *_ctx)
 {
-    struct private *m = mod->private;
     struct station_info_ctx *ctx = _ctx;
 
     switch (type) {
@@ -925,23 +964,22 @@ handle_nl80211_station_info(struct module *mod, uint16_t type, bool nested,
         LOG_DBG("signal strength (last): %hhd dBm", *(uint8_t *)payload);
         break;
 
-    case NL80211_STA_INFO_SIGNAL_AVG: {
+    case NL80211_STA_INFO_SIGNAL_AVG:
         LOG_DBG("signal strength (average): %hhd dBm", *(uint8_t *)payload);
         mtx_lock(&mod->lock);
-        m->signal_strength_dbm = *(int8_t *)payload;
+        iface->signal_strength_dbm = *(int8_t *)payload;
         mtx_unlock(&mod->lock);
         ctx->update_bar = true;
         break;
-    }
 
     case NL80211_STA_INFO_TX_BITRATE: {
         struct rate_info_ctx rctx = {0};
         foreach_nlattr_nested(
-            mod, payload, len, &handle_nl80211_rate_info, &rctx);
+            mod, iface, payload, len, &handle_nl80211_rate_info, &rctx);
 
         LOG_DBG("TX bitrate: %.1f Mbit/s", rctx.bitrate / 1000. / 1000.);
         mtx_lock(&mod->lock);
-        m->tx_bitrate = rctx.bitrate;
+        iface->tx_bitrate = rctx.bitrate;
         mtx_unlock(&mod->lock);
         ctx->update_bar = true;
         break;
@@ -950,11 +988,11 @@ handle_nl80211_station_info(struct module *mod, uint16_t type, bool nested,
     case NL80211_STA_INFO_RX_BITRATE: {
         struct rate_info_ctx rctx = {0};
         foreach_nlattr_nested(
-            mod, payload, len, &handle_nl80211_rate_info, &rctx);
+            mod, iface, payload, len, &handle_nl80211_rate_info, &rctx);
 
         LOG_DBG("RX bitrate: %.1f Mbit/s", rctx.bitrate / 1000. / 1000.);
         mtx_lock(&mod->lock);
-        m->rx_bitrate = rctx.bitrate;
+        iface->rx_bitrate = rctx.bitrate;
         mtx_unlock(&mod->lock);
         ctx->update_bar = true;
         break;
@@ -962,7 +1000,7 @@ handle_nl80211_station_info(struct module *mod, uint16_t type, bool nested,
 
     default:
         LOG_DBG("%s: unrecognized nl80211 station info attribute: "
-                "type=%hu, nested=%d, len=%zu", m->iface, type, nested, len);
+                "type=%hu, nested=%d, len=%zu", iface->name, type, nested, len);
         break;
     }
 
@@ -970,16 +1008,17 @@ handle_nl80211_station_info(struct module *mod, uint16_t type, bool nested,
 }
 
 static bool
-handle_nl80211_new_station(struct module *mod, uint16_t type, bool nested,
-                           const void *payload, size_t len)
+handle_nl80211_new_station(struct module *mod, struct iface *iface, uint16_t type, bool nested,
+                           const void *payload, size_t len, void *_ctx)
 {
-    struct private *m UNUSED = mod->private;
-
     switch (type) {
+    case NL80211_ATTR_IFINDEX:
+        break;
+
     case NL80211_ATTR_STA_INFO: {
         struct station_info_ctx ctx = {0};
         foreach_nlattr_nested(
-            mod, payload, len, &handle_nl80211_station_info, &ctx);
+            mod, iface, payload, len, &handle_nl80211_station_info, &ctx);
 
         if (ctx.update_bar)
             mod->bar->refresh(mod->bar);
@@ -988,7 +1027,7 @@ handle_nl80211_new_station(struct module *mod, uint16_t type, bool nested,
 
     default:
         LOG_DBG("%s: unrecognized nl80211 attribute: "
-                "type=%hu, nested=%d, len=%zu", m->iface, type, nested, len);
+                "type=%hu, nested=%d, len=%zu", iface->name, type, nested, len);
         break;
     }
 
@@ -996,9 +1035,8 @@ handle_nl80211_new_station(struct module *mod, uint16_t type, bool nested,
 }
 
 static bool
-handle_ies(struct module *mod, const void *_ies, size_t len)
+handle_ies(struct module *mod, struct iface *iface, const void *_ies, size_t len)
 {
-    struct private *m = mod->private;
     const uint8_t *ies = _ies;
 
     while (len >= 2 && len - 2 >= ies[1]) {
@@ -1007,12 +1045,12 @@ handle_ies(struct module *mod, const void *_ies, size_t len)
             const char *ssid = (const char *)&ies[2];
             const size_t ssid_len = ies[1];
 
-            if (m->ssid == NULL || strncmp(m->ssid, ssid, ssid_len) != 0)
-                LOG_INFO("%s: SSID: %.*s", m->iface, (int)ssid_len, ssid);
+            if (iface->ssid == NULL || strncmp(iface->ssid, ssid, ssid_len) != 0)
+                LOG_INFO("%s: SSID: %.*s", iface->name, (int)ssid_len, ssid);
 
             mtx_lock(&mod->lock);
-            free(m->ssid);
-            m->ssid = strndup(ssid, ssid_len);
+            free(iface->ssid);
+            iface->ssid = strndup(ssid, ssid_len);
             mtx_unlock(&mod->lock);
 
             mod->bar->refresh(mod->bar);
@@ -1034,10 +1072,9 @@ struct scan_results_context {
 };
 
 static bool
-handle_nl80211_bss(struct module *mod, uint16_t type, bool nested,
+handle_nl80211_bss(struct module *mod, struct iface *iface, uint16_t type, bool nested,
                    const void *payload, size_t len, void *_ctx)
 {
-    struct private *m UNUSED = mod->private;
     struct scan_results_context *ctx = _ctx;
 
     switch (type) {
@@ -1049,7 +1086,7 @@ handle_nl80211_bss(struct module *mod, uint16_t type, bool nested,
 
             if (ctx->ies != NULL) {
                 /* Deferred handling of BSS_INFORMATION_ELEMENTS */
-                return handle_ies(mod, ctx->ies, ctx->ies_size);
+                return handle_ies(mod, iface, ctx->ies, ctx->ies_size);
             }
         }
         break;
@@ -1057,7 +1094,7 @@ handle_nl80211_bss(struct module *mod, uint16_t type, bool nested,
 
     case NL80211_BSS_INFORMATION_ELEMENTS:
         if (ctx->associated)
-            return handle_ies(mod, payload, len);
+            return handle_ies(mod, iface, payload, len);
         else {
             /*
              * We’re either not associated, or, we haven’t seen the
@@ -1076,16 +1113,14 @@ handle_nl80211_bss(struct module *mod, uint16_t type, bool nested,
 }
 
 static bool
-handle_nl80211_scan_results(struct module *mod, uint16_t type, bool nested,
-                            const void *payload, size_t len)
+handle_nl80211_scan_results(struct module *mod, struct iface *iface, uint16_t type, bool nested,
+                            const void *payload, size_t len, void *_ctx)
 {
-    struct private *m UNUSED = mod->private;
-
     struct scan_results_context ctx = {0};
 
     switch (type) {
     case NL80211_ATTR_BSS:
-        foreach_nlattr_nested(mod, payload, len, &handle_nl80211_bss, &ctx);
+        foreach_nlattr_nested(mod, iface, payload, len, &handle_nl80211_bss, &ctx);
         break;
     }
 
@@ -1131,21 +1166,38 @@ netlink_receive_messages(int sock, void **reply, size_t *len)
 }
 
 static void
-handle_stats(struct module *mod, struct rt_stats_msg *msg)
+handle_stats(struct module *mod, uint32_t seq, struct rt_stats_msg *msg)
 {
     struct private *m = mod->private;
+
+    struct iface *iface = NULL;
+
+    tll_foreach(m->ifaces, it) {
+        if (seq != it->item.get_stats_seq_nr)
+            continue;
+        iface = &it->item;
+        /* Current request is now considered complete */
+        iface->get_stats_seq_nr = 0;
+        break;
+    }
+
+    if (iface == NULL) {
+        LOG_ERR("Couldn't find iface");
+        return;
+    }
+
     uint64_t ul_bits = msg->stats.tx_bytes * 8;
     uint64_t dl_bits = msg->stats.rx_bytes * 8;
 
     const double poll_interval_secs = (double)m->poll_interval / 1000.;
 
-    if (m->ul_bits != 0)
-        m->ul_speed = (double)(ul_bits - m->ul_bits) / poll_interval_secs;
-    if (m->dl_bits != 0)
-        m->dl_speed = (double)(dl_bits - m->dl_bits) / poll_interval_secs;
+    if (iface->ul_bits != 0)
+        iface->ul_speed = (double)(ul_bits - iface->ul_bits) / poll_interval_secs;
+    if (iface->dl_bits != 0)
+        iface->dl_speed = (double)(dl_bits - iface->dl_bits) / poll_interval_secs;
 
-    m->ul_bits = ul_bits;
-    m->dl_bits = dl_bits;
+    iface->ul_bits = ul_bits;
+    iface->dl_bits = dl_bits;
 }
 
 static bool
@@ -1155,15 +1207,12 @@ parse_rt_reply(struct module *mod, const struct nlmsghdr *hdr, size_t len)
 
     /* Process response */
     for (; NLMSG_OK(hdr, len); hdr = NLMSG_NEXT(hdr, len)) {
+
         switch (hdr->nlmsg_type) {
         case NLMSG_DONE:
-            if (m->ifindex == -1) {
-                LOG_ERR("%s: failed to find interface", m->iface);
-                return false;
-            }
 
             /* Request initial list of IPv4/6 addresses */
-            if (m->get_addresses && m->ifindex != -1) {
+            if (m->get_addresses) {
                 m->get_addresses = false;
                 send_rt_request(m, RTM_GETADDR);
             }
@@ -1188,20 +1237,20 @@ parse_rt_reply(struct module *mod, const struct nlmsghdr *hdr, size_t len)
         }
         case RTM_NEWSTATS: {
             struct rt_stats_msg *msg = NLMSG_DATA(hdr);
-            handle_stats(mod, msg);
+            handle_stats(mod, hdr->nlmsg_seq, msg);
             break;
         }
 
         case NLMSG_ERROR:{
             const struct nlmsgerr *err = NLMSG_DATA(hdr);
-            LOG_ERRNO_P(-err->error, "%s: netlink RT reply", m->iface);
+            LOG_ERRNO_P(-err->error, "netlink RT reply");
             return false;
         }
 
         default:
             LOG_WARN(
-                "%s: unrecognized netlink message type: 0x%x",
-                m->iface, hdr->nlmsg_type);
+                "unrecognized netlink message type: 0x%x",
+                hdr->nlmsg_type);
             return false;
         }
     }
@@ -1213,29 +1262,35 @@ static bool
 parse_genl_reply(struct module *mod, const struct nlmsghdr *hdr, size_t len)
 {
     struct private *m = mod->private;
+    struct iface *iface = NULL;
 
     for (; NLMSG_OK(hdr, len); hdr = NLMSG_NEXT(hdr, len)) {
+        if (hdr->nlmsg_type == GENL_ID_CTRL) {
+            assert(hdr->nlmsg_seq == 1);
+            const struct genlmsghdr *genl = NLMSG_DATA(hdr);
+            const size_t msg_size = NLMSG_PAYLOAD(hdr, 0);
+            foreach_nlattr(mod, NULL, genl, msg_size, &handle_genl_ctrl, NULL);
+            continue;
+        }
+
         if (hdr->nlmsg_seq == m->nl80211.get_interface_seq_nr) {
             /* Current request is now considered complete */
             m->nl80211.get_interface_seq_nr = 0;
+
+            /* Can’t issue both get-station and get-scan at the
+             * same time. So, always run a get-scan when a
+             * get-station is complete */
+            send_nl80211_get_scan(m);
         }
 
         if (hdr->nlmsg_type == NLMSG_DONE) {
-            if (hdr->nlmsg_seq == m->nl80211.get_station_seq_nr) {
-                /* Current request is now considered complete */
-                m->nl80211.get_station_seq_nr = 0;
-            }
-
-            else if (hdr->nlmsg_seq == m->nl80211.get_scan_seq_nr) {
+            if (hdr->nlmsg_seq == m->nl80211.get_scan_seq_nr) {
                 /* Current request is now considered complete */
                 m->nl80211.get_scan_seq_nr = 0;
-            }
-        }
 
-        else if (hdr->nlmsg_type == GENL_ID_CTRL) {
-            const struct genlmsghdr *genl = NLMSG_DATA(hdr);
-            const size_t msg_size = NLMSG_PAYLOAD(hdr, 0);
-            foreach_nlattr(mod, genl, msg_size, &handle_genl_ctrl);
+                tll_foreach(m->ifaces, it)
+                    send_nl80211_get_station(m, &it->item);
+            }
         }
 
         else if (hdr->nlmsg_type == m->nl80211.family_id) {
@@ -1244,11 +1299,12 @@ parse_genl_reply(struct module *mod, const struct nlmsghdr *hdr, size_t len)
 
             switch (genl->cmd) {
             case NL80211_CMD_NEW_INTERFACE:
-                if (nl80211_is_for_us(mod, genl, msg_size)) {
-                    LOG_DBG("%s: got interface information", m->iface);
-                    foreach_nlattr(
-                        mod, genl, msg_size, &handle_nl80211_new_interface);
-                }
+                if (foreach_nlattr(mod, NULL, genl, msg_size, &find_nl80211_iface, &iface))
+                  continue;
+
+                LOG_DBG("%s: got interface information", iface->name);
+                foreach_nlattr(
+                    mod, iface, genl, msg_size, &handle_nl80211_new_interface, NULL);
                 break;
 
             case NL80211_CMD_CONNECT:
@@ -1262,49 +1318,43 @@ parse_genl_reply(struct module *mod, const struct nlmsghdr *hdr, size_t len)
                  *
                  * Thus, we need to explicitly request an update.
                  */
-                if (nl80211_is_for_us(mod, genl, msg_size)) {
-                    LOG_DBG("%s: connected, requesting interface information",
-                            m->iface);
-                    send_nl80211_get_interface(m);
-                    send_nl80211_get_station(m);
-                }
+                LOG_DBG("connected, requesting interface information");
+                send_nl80211_get_interface(m);
                 break;
 
             case NL80211_CMD_DISCONNECT:
-                if (nl80211_is_for_us(mod, genl, msg_size)) {
-                    LOG_DBG("%s: disconnected, resetting SSID etc", m->iface);
+                if (foreach_nlattr(mod, NULL, genl, msg_size, &find_nl80211_iface, &iface))
+                  continue;
 
-                    mtx_lock(&mod->lock);
-                    free(m->ssid);
-                    m->ssid = NULL;
-                    m->signal_strength_dbm = 0;
-                    m->rx_bitrate = m->tx_bitrate = 0;
-                    mtx_unlock(&mod->lock);
-                }
+                LOG_DBG("%s: disconnected, resetting SSID etc", iface->name);
+
+                mtx_lock(&mod->lock);
+                free(iface->ssid);
+                iface->ssid = NULL;
+                iface->signal_strength_dbm = 0;
+                iface->rx_bitrate = iface->tx_bitrate = 0;
+                mtx_unlock(&mod->lock);
                 break;
 
             case NL80211_CMD_NEW_STATION:
-                if (nl80211_is_for_us(mod, genl, msg_size)) {
-                    LOG_DBG("%s: got station information", m->iface);
-                    foreach_nlattr(mod, genl, msg_size, &handle_nl80211_new_station);
-                }
+                if (foreach_nlattr(mod, NULL, genl, msg_size, &find_nl80211_iface, &iface))
+                  continue;
+
+                LOG_DBG("%s: got station information", iface->name);
+                foreach_nlattr(mod, iface, genl, msg_size, &handle_nl80211_new_station, NULL);
 
                 LOG_DBG("%s: signal: %d dBm, RX=%u Mbit/s, TX=%u Mbit/s",
-                        m->iface, m->signal_strength_dbm,
-                        m->rx_bitrate / 1000 / 1000,
-                        m->tx_bitrate / 1000 / 1000);
-
-                /* Can’t issue both get-station and get-scan at the
-                 * same time. So, always run a get-scan when a
-                 * get-station is complete */
-                send_nl80211_get_scan(m);
+                        iface->name, iface->signal_strength_dbm,
+                        iface->rx_bitrate / 1000 / 1000,
+                        iface->tx_bitrate / 1000 / 1000);
                 break;
 
             case NL80211_CMD_NEW_SCAN_RESULTS:
-                if (nl80211_is_for_us(mod, genl, msg_size)) {
-                    LOG_DBG("%s: got scan results", m->iface);
-                    foreach_nlattr(mod, genl, msg_size, &handle_nl80211_scan_results);
-                }
+                if (foreach_nlattr(mod, NULL, genl, msg_size, &find_nl80211_iface, &iface))
+                  continue;
+
+                LOG_DBG("%s: got scan results", iface->name);
+                foreach_nlattr(mod, iface, genl, msg_size, &handle_nl80211_scan_results, NULL);
                 break;
 
             default:
@@ -1321,15 +1371,16 @@ parse_genl_reply(struct module *mod, const struct nlmsghdr *hdr, size_t len)
                 ; /* iface is not an nl80211 device */
             else if (nl_errno == ENOENT)
                 ; /* iface down? */
-            else
-                LOG_ERRNO_P(nl_errno, "%s: nl80211 reply (seq-nr: %u)",
-                            m->iface, hdr->nlmsg_seq);
+            else {
+                LOG_ERRNO_P(nl_errno, "nl80211 reply (seq-nr: %u)",
+                            hdr->nlmsg_seq);
+            }
         }
 
         else {
             LOG_WARN(
-                "%s: unrecognized netlink message type: 0x%x",
-                m->iface, hdr->nlmsg_type);
+                "unrecognized netlink message type: 0x%x",
+                hdr->nlmsg_type);
             return false;
         }
     }
@@ -1347,7 +1398,7 @@ run(struct module *mod)
     if (m->poll_interval > 0) {
         timer_fd = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC);
         if (timer_fd < 0) {
-            LOG_ERRNO("%s: failed to create poll timer FD", m->iface);
+            LOG_ERRNO("failed to create poll timer FD");
             goto out;
         }
 
@@ -1360,7 +1411,7 @@ run(struct module *mod)
         };
 
         if (timerfd_settime(timer_fd, 0, &poll_time, NULL) < 0) {
-            LOG_ERRNO("%s: failed to arm poll timer", m->iface);
+            LOG_ERRNO("failed to arm poll timer");
             goto out;
         }
     }
@@ -1394,12 +1445,12 @@ run(struct module *mod)
         if ((fds[1].revents & POLLHUP) ||
             (fds[2].revents & POLLHUP))
         {
-            LOG_ERR("%s: disconnected from netlink socket", m->iface);
+            LOG_ERR("disconnected from netlink socket");
             break;
         }
 
         if (fds[3].revents & POLLHUP) {
-            LOG_ERR("%s: disconnected from timer FD", m->iface);
+            LOG_ERR("disconnected from timer FD");
             break;
         }
 
@@ -1442,8 +1493,10 @@ run(struct module *mod)
                 break;
             }
 
-            send_nl80211_get_station(m);
-            send_rt_getstats_request(m);
+            tll_foreach(m->ifaces, it) {
+                send_nl80211_get_station(m, &it->item);
+                send_rt_getstats_request(m, &it->item);
+            };
         }
     }
 
@@ -1461,7 +1514,7 @@ run(struct module *mod)
 }
 
 static struct module *
-network_new(const char *iface, struct particle *label, int poll_interval)
+network_new(struct particle *label, int poll_interval, int left_spacing, int right_spacing)
 {
     int urandom_fd = open("/dev/urandom", O_RDONLY);
     if (urandom_fd < 0) {
@@ -1470,17 +1523,16 @@ network_new(const char *iface, struct particle *label, int poll_interval)
     }
 
     struct private *priv = calloc(1, sizeof(*priv));
-    priv->iface = strdup(iface);
     priv->label = label;
     priv->poll_interval = poll_interval;
+    priv->left_spacing = left_spacing;
+    priv->right_spacing = right_spacing;
 
     priv->genl_sock = -1;
     priv->rt_sock = -1;
     priv->urandom_fd = urandom_fd;
+    priv->get_addresses = false;
     priv->nl80211.family_id = -1;
-    priv->get_addresses = true;
-    priv->ifindex = -1;
-    priv->state = IF_OPER_DOWN;
 
     struct module *mod = module_common_new();
     mod->private = priv;
@@ -1494,13 +1546,20 @@ network_new(const char *iface, struct particle *label, int poll_interval)
 static struct module *
 from_conf(const struct yml_node *node, struct conf_inherit inherited)
 {
-    const struct yml_node *name = yml_get_value(node, "name");
     const struct yml_node *content = yml_get_value(node, "content");
     const struct yml_node *poll = yml_get_value(node, "poll-interval");
+    const struct yml_node *spacing = yml_get_value(node, "spacing");
+    const struct yml_node *left_spacing = yml_get_value(node, "left-spacing");
+    const struct yml_node *right_spacing = yml_get_value(node, "right-spacing");
+
+    int left = spacing != NULL ? yml_value_as_int(spacing) :
+        left_spacing != NULL ? yml_value_as_int(left_spacing) : 0;
+    int right = spacing != NULL ? yml_value_as_int(spacing) :
+        right_spacing != NULL ? yml_value_as_int(right_spacing) : 0;
 
     return network_new(
-        yml_value_as_string(name), conf_to_particle(content, inherited),
-        poll != NULL ? yml_value_as_int(poll) : 0);
+        conf_to_particle(content, inherited),
+        poll != NULL ? yml_value_as_int(poll) : 0, left, right);
 }
 
 static bool
@@ -1523,7 +1582,9 @@ static bool
 verify_conf(keychain_t *chain, const struct yml_node *node)
 {
     static const struct attr_info attrs[] = {
-        {"name", true, &conf_verify_string},
+        {"spacing", false, &conf_verify_unsigned},
+        {"left-spacing", false, &conf_verify_unsigned},
+        {"right-spacing", false, &conf_verify_unsigned},
         {"poll-interval", false, &conf_verify_poll_interval},
         MODULE_COMMON_ATTRS,
     };
