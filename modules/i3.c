@@ -418,10 +418,12 @@ handle_workspace_event(int sock, int type, const struct json_object *json, void 
     bool is_rename = strcmp(change_str, "rename") == 0;
     bool is_move = strcmp(change_str, "move") == 0;
     bool is_urgent = strcmp(change_str, "urgent") == 0;
+    bool is_reload = strcmp(change_str, "reload") == 0;
 
     struct json_object *current, *_current_id;
-    if (!json_object_object_get_ex(json, "current", &current) ||
-        !json_object_object_get_ex(current, "id", &_current_id))
+    if ((!json_object_object_get_ex(json, "current", &current) ||
+        !json_object_object_get_ex(current, "id", &_current_id)) &&
+        !is_reload)
     {
         LOG_ERR("workspace event without 'current' and/or 'id' properties");
         return false;
@@ -541,6 +543,12 @@ handle_workspace_event(int sock, int type, const struct json_object *json, void 
 
         struct workspace *w = workspace_lookup(m, current_id);
         w->urgent = json_object_get_boolean(urgent);
+    }
+
+    else if (is_reload) {
+        /* Schedule full update to check if anything was changed
+         * during reload */
+        i3_send_pkg(sock, I3_IPC_MESSAGE_TYPE_GET_WORKSPACES, NULL);
     }
 
     else {
