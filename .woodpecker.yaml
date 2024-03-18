@@ -1,5 +1,5 @@
 steps:
-  codespell:
+  - name: codespell
     when:
       branch:
         - master
@@ -11,7 +11,7 @@ steps:
       - pip install codespell
       - codespell README.md CHANGELOG.md *.c *.h doc/*.scd
 
-  subprojects:
+  - name: subprojects
     when:
       branch:
         - master
@@ -24,12 +24,12 @@ steps:
       - git clone https://codeberg.org/dnkl/fcft.git
       - cd ..
 
-  x64:
+  - name: x64
     when:
       branch:
         - master
         - releases/*
-    group: build
+    depends_on: [subprojects]
     image: alpine:latest
     commands:
       - apk update
@@ -83,12 +83,12 @@ steps:
       - ./yambar --version
       - cd ../..
 
-  x86:
+  - name: x86
     when:
       branch:
         - master
         - releases/*
-    group: build
+    depends_on: [subprojects]
     image: i386/alpine:latest
     commands:
       - apk add musl-dev eudev-libs eudev-dev linux-headers meson ninja gcc scdoc
