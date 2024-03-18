@@ -8,8 +8,11 @@ steps:
     commands:
       - apk add python3
       - apk add py3-pip
+      - python3 -m venv codespell-venv
+      - source codespell-venv/bin/activate
       - pip install codespell
       - codespell README.md CHANGELOG.md *.c *.h doc/*.scd
+      - deactivate
 
   - name: subprojects
     when:
