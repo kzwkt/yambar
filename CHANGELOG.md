@@ -47,6 +47,7 @@
 * script: buffer overflow when reading large amounts of data.
 * i3/sway: module fails when reloading config file ([#361][361]).
 * Worked around bug in gcc causing a compilation error ([#350][350]).
+* Miscalculation of list width in presence of empty particles ([#369][369]).
 
 [311]: https://codeberg.org/dnkl/yambar/issues/311
 [302]: https://codeberg.org/dnkl/yambar/issues/302
@@ -55,6 +56,7 @@
 [352]: https://codeberg.org/dnkl/yambar/issues/352
 [361]: https://codeberg.org/dnkl/yambar/issues/361
 [350]: https://codeberg.org/dnkl/yambar/issues/350
+[369]: https://codeberg.org/dnkl/yambar/issues/369
 
 
 ### Security

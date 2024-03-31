@@ -71,7 +71,8 @@ dynlist_expose(const struct exposable *exposable, pixman_image_t *pix, int x, in
     for (size_t i = 0; i < e->count; i++) {
         const struct exposable *ee = e->exposables[i];
         ee->expose(ee, pix, x + left_spacing, y, height);
-        x += left_spacing + e->widths[i] + right_spacing;
+        if (e->widths[i] > 0)
+            x += left_spacing + e->widths[i] + right_spacing;
     }
 }
 
@@ -95,8 +96,8 @@ on_mouse(struct exposable *exposable, struct bar *bar,
             }
             return;
         }
-
-        px += e->left_spacing + e->exposables[i]->width + e->right_spacing;
+        if (e->exposables[i]->width > 0)
+            px += e->left_spacing + e->exposables[i]->width + e->right_spacing;
     }
 
     LOG_DBG("on_mouse missed all sub-particles");
