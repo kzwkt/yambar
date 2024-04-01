@@ -39,8 +39,13 @@ bar:
         host: 127.0.0.1
         content: {string: {text: "{state}"}}
     - network:
-        name: ldsjfdf
-        content: {string: {text: "{name}"}}
+        content:
+          map:
+            default:
+              string: {text: "{name}: {state} ({ipv4})"}
+            conditions:
+              ipv4 == "":
+                string: {text: "{name}: {state}"}
     - removables:
         content: {string: {text: "{label}"}}
     # - xkb:
