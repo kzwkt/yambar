@@ -98,7 +98,7 @@ if plugin_label_enabled
 endif
 
 if plugin_network_enabled
-  mod_data += {'network': [[], []]}
+  mod_data += {'network': [[], [dynlist]]}
 endif
 
 if plugin_pipewire_enabled
