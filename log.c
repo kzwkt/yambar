@@ -15,7 +15,7 @@
 #define UNUSED __attribute__((unused))
 
 static bool colorize = false;
-static bool do_syslog = true;
+static bool do_syslog = false;
 static enum log_class log_level = LOG_CLASS_NONE;
 
 static const struct {
@@ -100,6 +100,9 @@ _sys_log(enum log_class log_class, const char *module,
     assert(log_class < ALEN(log_level_map));
 
     if (!do_syslog)
+        return;
+
+    if (log_class > log_level)
         return;
 
     /* Map our log level to syslog's level */

@@ -48,6 +48,7 @@
 * i3/sway: module fails when reloading config file ([#361][361]).
 * Worked around bug in gcc causing a compilation error ([#350][350]).
 * Miscalculation of list width in presence of empty particles ([#369][369]).
+* Log-level not respected by syslog.
 
 [311]: https://codeberg.org/dnkl/yambar/issues/311
 [302]: https://codeberg.org/dnkl/yambar/issues/302
