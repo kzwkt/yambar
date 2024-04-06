@@ -18,7 +18,7 @@ struct bar {
 };
 
 enum bar_location { BAR_TOP, BAR_BOTTOM };
-enum bar_layer { BAR_LAYER_TOP, BAR_LAYER_BOTTOM };
+enum bar_layer { BAR_LAYER_OVERLAY, BAR_LAYER_TOP, BAR_LAYER_BOTTOM, BAR_LAYER_BACKGROUND };
 enum bar_backend { BAR_BACKEND_AUTO, BAR_BACKEND_XCB, BAR_BACKEND_WAYLAND };
 
 struct bar_config {

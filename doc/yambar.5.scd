@@ -49,7 +49,8 @@ types that are frequently used:
 |  layer
 :  string
 :  no
-:  Layer to put bar on. One of _top_ or _bottom_. Wayland only
+:  Layer to put bar on. One of _overlay_, _top_, _bottom_ or
+   _background_. Wayland only. Default: _bottom_.
 |  left-spacing
 :  int
 :  no

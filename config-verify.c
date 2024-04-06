@@ -453,7 +453,9 @@ verify_bar_location(keychain_t *chain, const struct yml_node *node)
 static bool
 verify_bar_layer(keychain_t *chain, const struct yml_node *node)
 {
-    return conf_verify_enum(chain, node, (const char *[]){"top", "bottom"}, 2);
+    return conf_verify_enum(
+        chain, node,
+        (const char *[]){"overlay", "top", "bottom", "background"}, 4);
 }
 
 bool

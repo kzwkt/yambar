@@ -814,9 +814,26 @@ create_surface(struct wayland_backend *backend)
 
     wl_surface_add_listener(backend->surface, &surface_listener, backend);
 
-    enum zwlr_layer_shell_v1_layer layer = bar->layer == BAR_LAYER_BOTTOM
-        ? ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM
-        : ZWLR_LAYER_SHELL_V1_LAYER_TOP;
+
+    enum zwlr_layer_shell_v1_layer layer;
+
+    switch (bar->layer) {
+    case BAR_LAYER_BACKGROUND:
+        layer = ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND;
+        break;
+
+    case BAR_LAYER_BOTTOM:
+        layer = ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
+        break;
+
+    case BAR_LAYER_TOP:
+        layer = ZWLR_LAYER_SHELL_V1_LAYER_TOP;
+        break;
+
+    case BAR_LAYER_OVERLAY:
+        layer = ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY;
+        break;
+    }
 
     backend->layer_surface = zwlr_layer_shell_v1_get_layer_surface(
         backend->layer_shell, backend->surface,

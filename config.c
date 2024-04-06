@@ -340,10 +340,14 @@ conf_to_bar(const struct yml_node *bar, enum bar_backend backend)
     const struct yml_node *layer = yml_get_value(bar, "layer");
     if (layer != NULL) {
         const char *tmp = yml_value_as_string(layer);
-        if (strcmp(tmp, "top") == 0)
+        if (strcmp(tmp, "overlay") == 0)
+            conf.layer = BAR_LAYER_OVERLAY;
+        else if (strcmp(tmp, "top") == 0)
             conf.layer = BAR_LAYER_TOP;
         else if (strcmp(tmp, "bottom") == 0)
             conf.layer = BAR_LAYER_BOTTOM;
+        else if (strcmp(tmp, "background") == 0)
+            conf.layer = BAR_LAYER_BACKGROUND;
         else
             assert(false);
     }
