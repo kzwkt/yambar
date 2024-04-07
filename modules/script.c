@@ -1,14 +1,14 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <errno.h>
 #include <assert.h>
-#include <unistd.h>
+#include <errno.h>
 #include <libgen.h>
 #include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
-#include <poll.h>
 #include <fcntl.h>
+#include <poll.h>
 
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -16,15 +16,16 @@
 
 #define LOG_MODULE "script"
 #define LOG_ENABLE_DBG 0
-#include "../log.h"
-#include "../config.h"
 #include "../config-verify.h"
+#include "../config.h"
+#include "../log.h"
 #include "../module.h"
 #include "../plugin.h"
 
 static const long min_poll_interval = 250;
 
-struct private {
+struct private
+{
     char *path;
     size_t argc;
     char **argv;
@@ -110,9 +111,8 @@ process_line(struct module *mod, const char *line, size_t len)
 
     size_t value_len = line + len - _value;
 
-    LOG_DBG("%.*s: name=\"%.*s\", type=\"%.*s\", value=\"%.*s\"",
-            (int)len, line,
-            (int)name_len, _name, (int)type_len, type, (int)value_len, _value);
+    LOG_DBG("%.*s: name=\"%.*s\", type=\"%.*s\", value=\"%.*s\"", (int)len, line, (int)name_len, _name, (int)type_len,
+            type, (int)value_len, _value);
 
     name = malloc(name_len + 1);
     memcpy(name, _name, name_len);
@@ -165,16 +165,12 @@ process_line(struct module *mod, const char *line, size_t len)
         tag = tag_new_float(mod, name, v);
     }
 
-    else if ((type_len > 6 && memcmp(type, "range:", 6) == 0) ||
-             (type_len > 9 && memcmp(type, "realtime:", 9) == 0))
-    {
+    else if ((type_len > 6 && memcmp(type, "range:", 6) == 0) || (type_len > 9 && memcmp(type, "realtime:", 9) == 0)) {
         const char *_start = type + 6;
         const char *split = memchr(_start, '-', type_len - 6);
 
         if (split == NULL || split == _start || (split + 1) - type >= type_len) {
-            LOG_ERR(
-                "tag range delimiter ('-') not found in type: %.*s",
-                (int)type_len, type);
+            LOG_ERR("tag range delimiter ('-') not found in type: %.*s", (int)type_len, type);
             goto bad_tag;
         }
 
@@ -186,9 +182,7 @@ process_line(struct module *mod, const char *line, size_t len)
         long start = 0;
         for (size_t i = 0; i < start_len; i++) {
             if (!(_start[i] >= '0' && _start[i] <= '9')) {
-                LOG_ERR(
-                    "tag range start is not an integer: %.*s",
-                    (int)start_len, _start);
+                LOG_ERR("tag range start is not an integer: %.*s", (int)start_len, _start);
                 goto bad_tag;
             }
 
@@ -199,9 +193,7 @@ process_line(struct module *mod, const char *line, size_t len)
         long end = 0;
         for (size_t i = 0; i < end_len; i++) {
             if (!(_end[i] >= '0' && _end[i] <= '9')) {
-                LOG_ERR(
-                    "tag range end is not an integer: %.*s",
-                    (int)end_len, _end);
+                LOG_ERR("tag range end is not an integer: %.*s", (int)end_len, _end);
                 goto bad_tag;
             }
 
@@ -223,8 +215,7 @@ process_line(struct module *mod, const char *line, size_t len)
         }
 
         if (v < start || v > end) {
-            LOG_ERR("tag value is outside range: %ld <= %ld <= %ld",
-                    start, v, end);
+            LOG_ERR("tag value is outside range: %ld <= %ld <= %ld", start, v, end);
             goto bad_tag;
         }
 
@@ -326,9 +317,7 @@ data_received(struct module *mod, const char *data, size_t len)
         process_transaction(mod, transaction_size);
 
         assert(m->recv_buf.idx >= transaction_size + 1);
-        memmove(m->recv_buf.data,
-                &m->recv_buf.data[transaction_size + 1],
-                m->recv_buf.idx - (transaction_size + 1));
+        memmove(m->recv_buf.data, &m->recv_buf.data[transaction_size + 1], m->recv_buf.idx - (transaction_size + 1));
         m->recv_buf.idx -= transaction_size + 1;
     }
 
@@ -432,11 +421,8 @@ execute_script(struct module *mod)
         sigemptyset(&mask);
 
         const struct sigaction sa = {.sa_handler = SIG_DFL};
-        if (sigaction(SIGINT, &sa, NULL) < 0 ||
-            sigaction(SIGTERM, &sa, NULL) < 0 ||
-            sigaction(SIGCHLD, &sa, NULL) < 0 ||
-            sigprocmask(SIG_SETMASK, &mask, NULL) < 0)
-        {
+        if (sigaction(SIGINT, &sa, NULL) < 0 || sigaction(SIGTERM, &sa, NULL) < 0 || sigaction(SIGCHLD, &sa, NULL) < 0
+            || sigprocmask(SIG_SETMASK, &mask, NULL) < 0) {
             goto fail;
         }
 
@@ -452,9 +438,7 @@ execute_script(struct module *mod)
         if (dev_null < 0)
             goto fail;
 
-        if (dup2(dev_null, STDIN_FILENO) < 0 ||
-            dup2(comm_pipe[1], STDOUT_FILENO) < 0)
-        {
+        if (dup2(dev_null, STDIN_FILENO) < 0 || dup2(comm_pipe[1], STDOUT_FILENO) < 0) {
             goto fail;
         }
 
@@ -533,9 +517,7 @@ execute_script(struct module *mod)
             usleep(10000);
 
             pid_t waited_pid;
-            while ((waited_pid = waitpid(
-                        pid, NULL, timeout > 0 ? WNOHANG : 0)) == 0)
-            {
+            while ((waited_pid = waitpid(pid, NULL, timeout > 0 ? WNOHANG : 0)) == 0) {
                 struct timeval now;
                 gettimeofday(&now, NULL);
 
@@ -547,7 +529,7 @@ execute_script(struct module *mod)
 
                 /* Don't spinning */
                 thrd_yield();
-                usleep(100000);  /* 100ms */
+                usleep(100000); /* 100ms */
             }
 
             if (waited_pid == pid) {
@@ -580,7 +562,7 @@ run(struct module *mod)
             break;
 
         struct timeval now;
-        if (gettimeofday(&now, NULL)  < 0) {
+        if (gettimeofday(&now, NULL) < 0) {
             LOG_ERRNO("failed to get current time");
             break;
         }
@@ -631,8 +613,7 @@ run(struct module *mod)
 }
 
 static struct module *
-script_new(char *path, size_t argc, const char *const argv[static argc],
-           int poll_interval, struct particle *_content)
+script_new(char *path, size_t argc, const char *const argv[static argc], int poll_interval, struct particle *_content)
 {
     struct private *m = calloc(1, sizeof(*m));
     m->path = path;
@@ -665,10 +646,7 @@ from_conf(const struct yml_node *node, struct conf_inherit inherited)
 
     if (args != NULL) {
         size_t i = 0;
-        for (struct yml_list_iter iter = yml_list_iter(args);
-             iter.node != NULL;
-             yml_list_next(&iter), i++)
-        {
+        for (struct yml_list_iter iter = yml_list_iter(args); iter.node != NULL; yml_list_next(&iter), i++) {
             argv[i] = yml_value_as_string(iter.node);
         }
     }
@@ -691,10 +669,8 @@ from_conf(const struct yml_node *node, struct conf_inherit inherited)
     } else
         path = strdup(yml_path);
 
-    return script_new(
-        path, argc, argv,
-        poll_interval != NULL ? yml_value_as_int(poll_interval) : 0,
-        conf_to_particle(c, inherited));
+    return script_new(path, argc, argv, poll_interval != NULL ? yml_value_as_int(poll_interval) : 0,
+                      conf_to_particle(c, inherited));
 }
 
 static bool
@@ -709,8 +685,7 @@ conf_verify_path(keychain_t *chain, const struct yml_node *node)
     const bool is_absolute = path[0] == '/';
 
     if (!is_tilde && !is_absolute) {
-        LOG_ERR("%s: path must either be absolute, or begin with '~/'",
-                conf_err_prefix(chain, node));
+        LOG_ERR("%s: path must either be absolute, or begin with '~/'", conf_err_prefix(chain, node));
         return false;
     }
 
@@ -730,8 +705,7 @@ conf_verify_poll_interval(keychain_t *chain, const struct yml_node *node)
         return false;
 
     if (yml_value_as_int(node) < min_poll_interval) {
-        LOG_ERR("%s: interval value cannot be less than %ldms",
-                conf_err_prefix(chain, node), min_poll_interval);
+        LOG_ERR("%s: interval value cannot be less than %ldms", conf_err_prefix(chain, node), min_poll_interval);
         return false;
     }
 

@@ -1,15 +1,15 @@
 #include "bar.h"
 #include "private.h"
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <threads.h>
 #include <assert.h>
-#include <unistd.h>
 #include <pthread.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <threads.h>
+#include <unistd.h>
 
 #include <sys/eventfd.h>
 
@@ -18,11 +18,11 @@
 #include "../log.h"
 
 #if defined(ENABLE_X11)
- #include "xcb.h"
+#include "xcb.h"
 #endif
 
 #if defined(ENABLE_WAYLAND)
- #include "wayland.h"
+#include "wayland.h"
 #endif
 
 #define max(x, y) ((x) > (y) ? (x) : (y))
@@ -75,9 +75,8 @@ expose(const struct bar *_bar)
     const struct private *bar = _bar->private;
     pixman_image_t *pix = bar->pix;
 
-    pixman_image_fill_rectangles(
-        PIXMAN_OP_SRC, pix, &bar->background, 1,
-        &(pixman_rectangle16_t){0, 0, bar->width, bar->height_with_border});
+    pixman_image_fill_rectangles(PIXMAN_OP_SRC, pix, &bar->background, 1,
+                                 &(pixman_rectangle16_t){0, 0, bar->width, bar->height_with_border});
 
     pixman_image_fill_rectangles(
         PIXMAN_OP_OVER, pix, &bar->border.color, 4,
@@ -86,20 +85,15 @@ expose(const struct bar *_bar)
             {0, 0, bar->border.left_width, bar->height_with_border},
 
             /* Right */
-            {bar->width - bar->border.right_width,
-             0, bar->border.right_width, bar->height_with_border},
+            {bar->width - bar->border.right_width, 0, bar->border.right_width, bar->height_with_border},
 
             /* Top */
-            {bar->border.left_width,
-             0,
-             bar->width - bar->border.left_width - bar->border.right_width,
+            {bar->border.left_width, 0, bar->width - bar->border.left_width - bar->border.right_width,
              bar->border.top_width},
 
             /* Bottom */
-            {bar->border.left_width,
-             bar->height_with_border - bar->border.bottom_width,
-             bar->width - bar->border.left_width - bar->border.right_width,
-             bar->border.bottom_width},
+            {bar->border.left_width, bar->height_with_border - bar->border.bottom_width,
+             bar->width - bar->border.left_width - bar->border.right_width, bar->border.bottom_width},
         });
 
     for (size_t i = 0; i < bar->left.count; i++) {
@@ -136,12 +130,8 @@ expose(const struct bar *_bar)
     int x = bar->border.left_width + bar->left_margin - bar->left_spacing;
     pixman_region32_t clip;
     pixman_region32_init_rect(
-        &clip,
-        bar->border.left_width + bar->left_margin,
-        bar->border.top_width,
-        (bar->width -
-         bar->left_margin - bar->right_margin -
-         bar->border.left_width - bar->border.right_width),
+        &clip, bar->border.left_width + bar->left_margin, bar->border.top_width,
+        (bar->width - bar->left_margin - bar->right_margin - bar->border.left_width - bar->border.right_width),
         bar->height);
     pixman_image_set_clip_region32(pix, &clip);
     pixman_region32_fini(&clip);
@@ -161,11 +151,7 @@ expose(const struct bar *_bar)
             x += bar->left_spacing + e->width + bar->right_spacing;
     }
 
-    x = bar->width - (
-        right_width +
-        bar->left_spacing +
-        bar->right_margin +
-        bar->border.right_width);
+    x = bar->width - (right_width + bar->left_spacing + bar->right_margin + bar->border.right_width);
 
     for (size_t i = 0; i < bar->right.count; i++) {
         const struct exposable *e = bar->right.exps[i];
@@ -176,7 +162,6 @@ expose(const struct bar *_bar)
 
     bar->backend.iface->commit(_bar);
 }
-
 
 static void
 refresh(const struct bar *bar)
@@ -200,15 +185,12 @@ output_name(const struct bar *bar)
 }
 
 static void
-on_mouse(struct bar *_bar, enum mouse_event event, enum mouse_button btn,
-         int x, int y)
+on_mouse(struct bar *_bar, enum mouse_event event, enum mouse_button btn, int x, int y)
 {
     struct private *bar = _bar->private;
 
-    if ((y < bar->border.top_width ||
-         y >= (bar->height_with_border - bar->border.bottom_width)) ||
-        (x < bar->border.left_width || x >= (bar->width - bar->border.right_width)))
-    {
+    if ((y < bar->border.top_width || y >= (bar->height_with_border - bar->border.bottom_width))
+        || (x < bar->border.left_width || x >= (bar->width - bar->border.right_width))) {
         set_cursor(_bar, "left_ptr");
         return;
     }
@@ -250,10 +232,7 @@ on_mouse(struct bar *_bar, enum mouse_event event, enum mouse_button btn,
         mx += e->width + bar->right_spacing;
     }
 
-    mx = bar->width - (right_width +
-                       bar->left_spacing +
-                       bar->right_margin +
-                       bar->border.right_width);
+    mx = bar->width - (right_width + bar->left_spacing + bar->right_margin + bar->border.right_width);
 
     for (size_t i = 0; i < bar->right.count; i++) {
         struct exposable *e = bar->right.exps[i];
@@ -294,8 +273,7 @@ run(struct bar *_bar)
 {
     struct private *bar = _bar->private;
 
-    bar->height_with_border =
-        bar->height + bar->border.top_width + bar->border.bottom_width;
+    bar->height_with_border = bar->height + bar->border.top_width + bar->border.bottom_width;
 
     if (!bar->backend.iface->setup(_bar)) {
         bar->backend.iface->cleanup(_bar);
@@ -347,8 +325,7 @@ run(struct bar *_bar)
         thrd_join(thrd_left[i], &mod_ret);
         if (mod_ret != 0) {
             const struct module *m = bar->left.mods[i];
-            LOG_ERR("module: LEFT #%zu (%s): non-zero exit value: %d",
-                    i, m->description(m), mod_ret);
+            LOG_ERR("module: LEFT #%zu (%s): non-zero exit value: %d", i, m->description(m), mod_ret);
         }
         ret = ret == 0 && mod_ret != 0 ? mod_ret : ret;
     }
@@ -356,8 +333,7 @@ run(struct bar *_bar)
         thrd_join(thrd_center[i], &mod_ret);
         if (mod_ret != 0) {
             const struct module *m = bar->center.mods[i];
-            LOG_ERR("module: CENTER #%zu (%s): non-zero exit value: %d",
-                    i, m->description(m), mod_ret);
+            LOG_ERR("module: CENTER #%zu (%s): non-zero exit value: %d", i, m->description(m), mod_ret);
         }
         ret = ret == 0 && mod_ret != 0 ? mod_ret : ret;
     }
@@ -365,8 +341,7 @@ run(struct bar *_bar)
         thrd_join(thrd_right[i], &mod_ret);
         if (mod_ret != 0) {
             const struct module *m = bar->right.mods[i];
-            LOG_ERR("module: RIGHT #%zu (%s): non-zero exit value: %d",
-                    i, m->description(m), mod_ret);
+            LOG_ERR("module: RIGHT #%zu (%s): non-zero exit value: %d", i, m->description(m), mod_ret);
         }
         ret = ret == 0 && mod_ret != 0 ? mod_ret : ret;
     }

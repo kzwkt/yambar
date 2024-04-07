@@ -1,7 +1,7 @@
 #include "config.h"
 
-#include <string.h>
 #include <assert.h>
+#include <string.h>
 
 #include <tllist.h>
 
@@ -16,11 +16,9 @@ conf_err_prefix(const keychain_t *chain, const struct yml_node *node)
     static char msg[4096];
     int idx = 0;
 
-    idx += snprintf(&msg[idx], sizeof(msg) - idx, "%zu:%zu: ",
-                    yml_source_line(node), yml_source_column(node));
+    idx += snprintf(&msg[idx], sizeof(msg) - idx, "%zu:%zu: ", yml_source_line(node), yml_source_column(node));
 
-    tll_foreach(*chain, key)
-        idx += snprintf(&msg[idx], sizeof(msg) - idx, "%s.", key->item);
+    tll_foreach(*chain, key) idx += snprintf(&msg[idx], sizeof(msg) - idx, "%s.", key->item);
 
     /* Remove trailing "." */
     msg[idx - 1] = '\0';
@@ -45,8 +43,7 @@ conf_verify_int(keychain_t *chain, const struct yml_node *node)
     if (yml_value_is_int(node))
         return true;
 
-    LOG_ERR("%s: value is not an integer: '%s'",
-            conf_err_prefix(chain, node), yml_value_as_string(node));
+    LOG_ERR("%s: value is not an integer: '%s'", conf_err_prefix(chain, node), yml_value_as_string(node));
     return false;
 }
 
@@ -56,8 +53,7 @@ conf_verify_unsigned(keychain_t *chain, const struct yml_node *node)
     if (yml_value_is_int(node) && yml_value_as_int(node) >= 0)
         return true;
 
-    LOG_ERR("%s: value is not a positive integer: '%s'",
-            conf_err_prefix(chain, node), yml_value_as_string(node));
+    LOG_ERR("%s: value is not a positive integer: '%s'", conf_err_prefix(chain, node), yml_value_as_string(node));
     return false;
 }
 
@@ -67,8 +63,7 @@ conf_verify_bool(keychain_t *chain, const struct yml_node *node)
     if (yml_value_is_bool(node))
         return true;
 
-    LOG_ERR("%s: value is not a boolean: '%s'",
-            conf_err_prefix(chain, node), yml_value_as_string(node));
+    LOG_ERR("%s: value is not a boolean: '%s'", conf_err_prefix(chain, node), yml_value_as_string(node));
     return false;
 }
 
@@ -81,10 +76,7 @@ conf_verify_list(keychain_t *chain, const struct yml_node *node,
         return false;
     }
 
-    for (struct yml_list_iter iter = yml_list_iter(node);
-         iter.node != NULL;
-         yml_list_next(&iter))
-    {
+    for (struct yml_list_iter iter = yml_list_iter(node); iter.node != NULL; yml_list_next(&iter)) {
         if (!verify(chain, iter.node))
             return false;
     }
@@ -93,8 +85,7 @@ conf_verify_list(keychain_t *chain, const struct yml_node *node,
 }
 
 bool
-conf_verify_enum(keychain_t *chain, const struct yml_node *node,
-                 const char *values[], size_t count)
+conf_verify_enum(keychain_t *chain, const struct yml_node *node, const char *values[], size_t count)
 {
     const char *s = yml_value_as_string(node);
     if (s == NULL) {
@@ -115,8 +106,7 @@ conf_verify_enum(keychain_t *chain, const struct yml_node *node,
 }
 
 bool
-conf_verify_dict(keychain_t *chain, const struct yml_node *node,
-                 const struct attr_info info[])
+conf_verify_dict(keychain_t *chain, const struct yml_node *node, const struct attr_info info[])
 {
     if (!yml_is_dict(node)) {
         LOG_ERR("%s: must be a dictionary", conf_err_prefix(chain, node));
@@ -131,10 +121,7 @@ conf_verify_dict(keychain_t *chain, const struct yml_node *node,
     bool exists[count];
     memset(exists, 0, sizeof(exists));
 
-    for (struct yml_dict_iter it = yml_dict_iter(node);
-         it.key != NULL;
-         yml_dict_next(&it))
-    {
+    for (struct yml_dict_iter it = yml_dict_iter(node); it.key != NULL; yml_dict_next(&it)) {
         const char *key = yml_value_as_string(it.key);
         if (key == NULL) {
             LOG_ERR("%s: key must be a string", conf_err_prefix(chain, it.key));
@@ -190,8 +177,7 @@ verify_on_click_path(keychain_t *chain, const struct yml_node *node)
     const bool is_tilde = path[0] == '~' && path[1] == '/';
 
     if (!is_absolute && !is_tilde) {
-        LOG_ERR("%s: path must be either absolute, or begin with '~/",
-                conf_err_prefix(chain, node));
+        LOG_ERR("%s: path must be either absolute, or begin with '~/", conf_err_prefix(chain, node));
         return false;
     }
 
@@ -208,14 +194,10 @@ conf_verify_on_click(keychain_t *chain, const struct yml_node *node)
         return verify_on_click_path(chain, node);
 
     static const struct attr_info info[] = {
-        {"left", false, &verify_on_click_path},
-        {"middle", false, &verify_on_click_path},
-        {"right", false, &verify_on_click_path},
-        {"wheel-up", false, &verify_on_click_path},
-        {"wheel-down", false, &verify_on_click_path},
-        {"previous", false, &verify_on_click_path},
-        {"next", false, &verify_on_click_path},
-        {NULL, false, NULL},
+        {"left", false, &verify_on_click_path},       {"middle", false, &verify_on_click_path},
+        {"right", false, &verify_on_click_path},      {"wheel-up", false, &verify_on_click_path},
+        {"wheel-down", false, &verify_on_click_path}, {"previous", false, &verify_on_click_path},
+        {"next", false, &verify_on_click_path},       {NULL, false, NULL},
     };
 
     return conf_verify_dict(chain, node, info);
@@ -234,21 +216,18 @@ conf_verify_color(keychain_t *chain, const struct yml_node *node)
     int v = sscanf(s, "%02x%02x%02x%02x", &r, &g, &b, &a);
 
     if (strlen(s) != 8 || v != 4) {
-        LOG_ERR("%s: value must be a color ('rrggbbaa', e.g ff00ffff)",
-                conf_err_prefix(chain, node));
+        LOG_ERR("%s: value must be a color ('rrggbbaa', e.g ff00ffff)", conf_err_prefix(chain, node));
         return false;
     }
 
     return true;
 }
 
-
 bool
 conf_verify_font(keychain_t *chain, const struct yml_node *node)
 {
     if (!yml_is_scalar(node)) {
-        LOG_ERR("%s: font must be a fontconfig-formatted string",
-                conf_err_prefix(chain, node));
+        LOG_ERR("%s: font must be a fontconfig-formatted string", conf_err_prefix(chain, node));
         return false;
     }
 
@@ -258,8 +237,7 @@ conf_verify_font(keychain_t *chain, const struct yml_node *node)
 bool
 conf_verify_font_shaping(keychain_t *chain, const struct yml_node *node)
 {
-    return conf_verify_enum(
-        chain, node, (const char *[]){"full", /*"graphemes",*/ "none"}, 2);
+    return conf_verify_enum(chain, node, (const char *[]){"full", /*"graphemes",*/ "none"}, 2);
 }
 
 bool
@@ -269,7 +247,8 @@ conf_verify_decoration(keychain_t *chain, const struct yml_node *node)
 
     if (yml_dict_length(node) != 1) {
         LOG_ERR("%s: decoration must be a dictionary with a single key; "
-                "the name of the particle", conf_err_prefix(chain, node));
+                "the name of the particle",
+                conf_err_prefix(chain, node));
         return false;
     }
 
@@ -285,8 +264,7 @@ conf_verify_decoration(keychain_t *chain, const struct yml_node *node)
 
     const struct deco_iface *iface = plugin_load_deco(deco_name);
     if (iface == NULL) {
-        LOG_ERR("%s: invalid decoration name: %s",
-                conf_err_prefix(chain, deco), deco_name);
+        LOG_ERR("%s: invalid decoration name: %s", conf_err_prefix(chain, deco), deco_name);
         return false;
     }
 
@@ -303,10 +281,7 @@ conf_verify_particle_list_items(keychain_t *chain, const struct yml_node *node)
 {
     assert(yml_is_list(node));
 
-    for (struct yml_list_iter it = yml_list_iter(node);
-         it.node != NULL;
-         yml_list_next(&it))
-    {
+    for (struct yml_list_iter it = yml_list_iter(node); it.node != NULL; yml_list_next(&it)) {
         if (!conf_verify_particle(chain, it.node))
             return false;
     }
@@ -321,7 +296,8 @@ conf_verify_particle_dictionary(keychain_t *chain, const struct yml_node *node)
 
     if (yml_dict_length(node) != 1) {
         LOG_ERR("%s: particle must be a dictionary with a single key; "
-                "the name of the particle", conf_err_prefix(chain, node));
+                "the name of the particle",
+                conf_err_prefix(chain, node));
         return false;
     }
 
@@ -331,15 +307,13 @@ conf_verify_particle_dictionary(keychain_t *chain, const struct yml_node *node)
 
     const char *particle_name = yml_value_as_string(particle);
     if (particle_name == NULL) {
-        LOG_ERR("%s: particle name must be a string",
-                conf_err_prefix(chain, particle));
+        LOG_ERR("%s: particle name must be a string", conf_err_prefix(chain, particle));
         return false;
     }
 
     const struct particle_iface *iface = plugin_load_particle(particle_name);
     if (iface == NULL) {
-        LOG_ERR("%s: invalid particle name: %s",
-                conf_err_prefix(chain, particle), particle_name);
+        LOG_ERR("%s: invalid particle name: %s", conf_err_prefix(chain, particle), particle_name);
         return false;
     }
 
@@ -361,19 +335,18 @@ conf_verify_particle(keychain_t *chain, const struct yml_node *node)
     else if (yml_is_list(node))
         return conf_verify_particle_list_items(chain, node);
     else {
-        LOG_ERR("%s: particle must be either a dictionary or a list",
-                conf_err_prefix(chain, node));
+        LOG_ERR("%s: particle must be either a dictionary or a list", conf_err_prefix(chain, node));
         return false;
     }
 }
-
 
 static bool
 verify_module(keychain_t *chain, const struct yml_node *node)
 {
     if (!yml_is_dict(node) || yml_dict_length(node) != 1) {
         LOG_ERR("%s: module must be a dictionary with a single key; "
-                "the name of the module", conf_err_prefix(chain, node));
+                "the name of the module",
+                conf_err_prefix(chain, node));
         return false;
     }
 
@@ -389,8 +362,7 @@ verify_module(keychain_t *chain, const struct yml_node *node)
 
     const struct module_iface *iface = plugin_load_module(mod_name);
     if (iface == NULL) {
-        LOG_ERR(
-            "%s: invalid module name: %s", conf_err_prefix(chain, node), mod_name);
+        LOG_ERR("%s: invalid module name: %s", conf_err_prefix(chain, node), mod_name);
         return false;
     }
 
@@ -412,10 +384,7 @@ verify_module_list(keychain_t *chain, const struct yml_node *node)
         return false;
     }
 
-    for (struct yml_list_iter it = yml_list_iter(node);
-         it.node != NULL;
-         yml_list_next(&it))
-    {
+    for (struct yml_list_iter it = yml_list_iter(node); it.node != NULL; yml_list_next(&it)) {
         if (!verify_module(chain, it.node))
             return false;
     }
@@ -427,18 +396,12 @@ static bool
 verify_bar_border(keychain_t *chain, const struct yml_node *node)
 {
     static const struct attr_info attrs[] = {
-        {"width", false, &conf_verify_unsigned},
-        {"left-width", false, &conf_verify_unsigned},
-        {"right-width", false, &conf_verify_unsigned},
-        {"top-width", false, &conf_verify_unsigned},
-        {"bottom-width", false, &conf_verify_unsigned},
-        {"color", false, &conf_verify_color},
-        {"margin", false, &conf_verify_unsigned},
-        {"left-margin", false, &conf_verify_unsigned},
-        {"right-margin", false, &conf_verify_unsigned},
-        {"top-margin", false, &conf_verify_unsigned},
-        {"bottom-margin", false, &conf_verify_unsigned},
-        {NULL, false, NULL},
+        {"width", false, &conf_verify_unsigned},         {"left-width", false, &conf_verify_unsigned},
+        {"right-width", false, &conf_verify_unsigned},   {"top-width", false, &conf_verify_unsigned},
+        {"bottom-width", false, &conf_verify_unsigned},  {"color", false, &conf_verify_color},
+        {"margin", false, &conf_verify_unsigned},        {"left-margin", false, &conf_verify_unsigned},
+        {"right-margin", false, &conf_verify_unsigned},  {"top-margin", false, &conf_verify_unsigned},
+        {"bottom-margin", false, &conf_verify_unsigned}, {NULL, false, NULL},
     };
 
     return conf_verify_dict(chain, node, attrs);
@@ -453,9 +416,7 @@ verify_bar_location(keychain_t *chain, const struct yml_node *node)
 static bool
 verify_bar_layer(keychain_t *chain, const struct yml_node *node)
 {
-    return conf_verify_enum(
-        chain, node,
-        (const char *[]){"overlay", "top", "bottom", "background"}, 4);
+    return conf_verify_enum(chain, node, (const char *[]){"overlay", "top", "bottom", "background"}, 4);
 }
 
 bool

@@ -162,9 +162,7 @@ from_conf(const struct yml_node *node, struct conf_inherit inherited)
     const struct yml_node *interval = yml_get_value(node, "poll-interval");
     const struct yml_node *c = yml_get_value(node, "content");
 
-    return mem_new(
-        interval == NULL ? min_poll_interval : yml_value_as_int(interval),
-        conf_to_particle(c, inherited));
+    return mem_new(interval == NULL ? min_poll_interval : yml_value_as_int(interval), conf_to_particle(c, inherited));
 }
 
 static bool
@@ -174,8 +172,7 @@ conf_verify_poll_interval(keychain_t *chain, const struct yml_node *node)
         return false;
 
     if (yml_value_as_int(node) < min_poll_interval) {
-        LOG_ERR("%s: interval value cannot be less than %ldms",
-                conf_err_prefix(chain, node), min_poll_interval);
+        LOG_ERR("%s: interval value cannot be less than %ldms", conf_err_prefix(chain, node), min_poll_interval);
         return false;
     }
 

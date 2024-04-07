@@ -867,9 +867,7 @@ content(struct module *module)
 
     /* sink */
     output_informations
-        = (private->data->target_sink == NULL
-           ? &output_informations_null
-           : &private->sink_informations);
+        = (private->data->target_sink == NULL ? &output_informations_null : &private->sink_informations);
 
     struct tag_set sink_tag_set = (struct tag_set){
         .tags = (struct tag *[]){
@@ -888,9 +886,7 @@ content(struct module *module)
 
     /* source */
     output_informations
-        = (private->data->target_source == NULL
-           ? &output_informations_null
-           : &private->source_informations);
+        = (private->data->target_source == NULL ? &output_informations_null : &private->source_informations);
 
     struct tag_set source_tag_set = (struct tag_set){
         .tags = (struct tag *[]){

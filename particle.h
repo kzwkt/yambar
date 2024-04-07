@@ -42,10 +42,8 @@ struct particle {
     struct deco *deco;
 
     void (*destroy)(struct particle *particle);
-    struct exposable *(*instantiate)(const struct particle *particle,
-                                     const struct tag_set *tags);
+    struct exposable *(*instantiate)(const struct particle *particle, const struct tag_set *tags);
 };
-
 
 struct exposable {
     const struct particle *particle;
@@ -56,38 +54,31 @@ struct exposable {
 
     void (*destroy)(struct exposable *exposable);
     int (*begin_expose)(struct exposable *exposable);
-    void (*expose)(const struct exposable *exposable, pixman_image_t *pix,
-                   int x, int y, int height);
+    void (*expose)(const struct exposable *exposable, pixman_image_t *pix, int x, int y, int height);
 
-    void (*on_mouse)(struct exposable *exposable, struct bar *bar,
-                     enum mouse_event event, enum mouse_button btn, int x, int y);
+    void (*on_mouse)(struct exposable *exposable, struct bar *bar, enum mouse_event event, enum mouse_button btn, int x,
+                     int y);
 };
 
-struct particle *particle_common_new(
-    int left_margin, int right_margin, char *on_click_templates[],
-    struct fcft_font *font, enum font_shaping font_shaping,
-    pixman_color_t foreground, struct deco *deco);
+struct particle *particle_common_new(int left_margin, int right_margin, char *on_click_templates[],
+                                     struct fcft_font *font, enum font_shaping font_shaping, pixman_color_t foreground,
+                                     struct deco *deco);
 
 void particle_default_destroy(struct particle *particle);
 
-struct exposable *exposable_common_new(
-    const struct particle *particle, const struct tag_set *tags);
+struct exposable *exposable_common_new(const struct particle *particle, const struct tag_set *tags);
 void exposable_default_destroy(struct exposable *exposable);
-void exposable_render_deco(
-    const struct exposable *exposable, pixman_image_t *pix, int x, int y, int height);
+void exposable_render_deco(const struct exposable *exposable, pixman_image_t *pix, int x, int y, int height);
 
-void exposable_default_on_mouse(
-    struct exposable *exposable, struct bar *bar,
-    enum mouse_event event, enum mouse_button btn, int x, int y);
+void exposable_default_on_mouse(struct exposable *exposable, struct bar *bar, enum mouse_event event,
+                                enum mouse_button btn, int x, int y);
 
 /* List of attributes *all* particles implement */
-#define PARTICLE_COMMON_ATTRS                           \
-    {"margin", false, &conf_verify_unsigned},           \
-    {"left-margin", false, &conf_verify_unsigned},      \
-    {"right-margin", false, &conf_verify_unsigned},     \
-    {"on-click", false, &conf_verify_on_click},         \
-    {"font", false, &conf_verify_font},                 \
-    {"font-shaping", false, &conf_verify_font_shaping}, \
-    {"foreground", false, &conf_verify_color},          \
-    {"deco", false, &conf_verify_decoration},           \
-    {NULL, false, NULL}
+#define PARTICLE_COMMON_ATTRS                                                                                          \
+    {"margin", false, &conf_verify_unsigned}, {"left-margin", false, &conf_verify_unsigned},                           \
+        {"right-margin", false, &conf_verify_unsigned}, {"on-click", false, &conf_verify_on_click},                    \
+        {"font", false, &conf_verify_font}, {"font-shaping", false, &conf_verify_font_shaping},                        \
+        {"foreground", false, &conf_verify_color}, {"deco", false, &conf_verify_decoration},                           \
+    {                                                                                                                  \
+        NULL, false, NULL                                                                                              \
+    }

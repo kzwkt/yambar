@@ -1,13 +1,13 @@
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 #define LOG_MODULE "string"
 #define LOG_ENABLE_DBG 0
-#include "../log.h"
 #include "../char32.h"
-#include "../config.h"
 #include "../config-verify.h"
+#include "../config.h"
+#include "../log.h"
 #include "../particle.h"
 #include "../plugin.h"
 
@@ -18,7 +18,8 @@ struct text_run_cache {
     bool in_use;
 };
 
-struct private {
+struct private
+{
     char *text;
     size_t max_len;
 
@@ -51,9 +52,7 @@ begin_expose(struct exposable *exposable)
     struct eprivate *e = exposable->private;
     struct private *p = exposable->particle->private;
 
-    exposable->width =
-        exposable->particle->left_margin +
-        exposable->particle->right_margin;
+    exposable->width = exposable->particle->left_margin + exposable->particle->right_margin;
 
     if (e->cache_idx >= 0) {
         exposable->width += p->cache[e->cache_idx].width;
@@ -97,9 +96,8 @@ expose(const struct exposable *exposable, pixman_image_t *pix, int x, int y, int
      * any real facts, but works very well with e.g. the "Awesome 6"
      * font family.
      */
-    const double baseline = (double)y +
-        (double)(height + font->ascent + font->descent) / 2.0 -
-        (font->descent > 0 ? font->descent : 0);
+    const double baseline
+        = (double)y + (double)(height + font->ascent + font->descent) / 2.0 - (font->descent > 0 ? font->descent : 0);
 
     x += exposable->particle->left_margin;
 
@@ -112,17 +110,13 @@ expose(const struct exposable *exposable, pixman_image_t *pix, int x, int y, int
 
         if (pixman_image_get_format(glyph->pix) == PIXMAN_a8r8g8b8) {
             /* Glyph surface is a pre-rendered image (typically a color emoji...) */
-            pixman_image_composite32(
-                PIXMAN_OP_OVER, glyph->pix, NULL, pix, 0, 0, 0, 0,
-                x + glyph->x, baseline - glyph->y,
-                glyph->width, glyph->height);
+            pixman_image_composite32(PIXMAN_OP_OVER, glyph->pix, NULL, pix, 0, 0, 0, 0, x + glyph->x,
+                                     baseline - glyph->y, glyph->width, glyph->height);
         } else {
             /* Glyph surface is an alpha mask */
             pixman_image_t *src = pixman_image_create_solid_fill(&exposable->particle->foreground);
-            pixman_image_composite32(
-                PIXMAN_OP_OVER, src, glyph->pix, pix, 0, 0, 0, 0,
-                x + glyph->x, baseline - glyph->y,
-                glyph->width, glyph->height);
+            pixman_image_composite32(PIXMAN_OP_OVER, src, glyph->pix, pix, 0, 0, 0, 0, x + glyph->x,
+                                     baseline - glyph->y, glyph->width, glyph->height);
             pixman_image_unref(src);
         }
 
@@ -188,11 +182,8 @@ instantiate(const struct particle *particle, const struct tag_set *tags)
 
     e->kern_x = calloc(chars, sizeof(e->kern_x[0]));
 
-    if (particle->font_shaping == FONT_SHAPE_FULL &&
-        fcft_capabilities() & FCFT_CAPABILITY_TEXT_RUN_SHAPING)
-    {
-        struct fcft_text_run *run = fcft_rasterize_text_run_utf32(
-            font, chars, wtext, FCFT_SUBPIXEL_NONE);
+    if (particle->font_shaping == FONT_SHAPE_FULL && fcft_capabilities() & FCFT_CAPABILITY_TEXT_RUN_SHAPING) {
+        struct fcft_text_run *run = fcft_rasterize_text_run_utf32(font, chars, wtext, FCFT_SUBPIXEL_NONE);
 
         if (run != NULL) {
             int w = 0;
@@ -210,8 +201,7 @@ instantiate(const struct particle *particle, const struct tag_set *tags)
 
             if (cache_idx < 0) {
                 size_t new_size = p->cache_size + 1;
-                struct text_run_cache *new_cache = realloc(
-                    p->cache, new_size * sizeof(new_cache[0]));
+                struct text_run_cache *new_cache = realloc(p->cache, new_size * sizeof(new_cache[0]));
 
                 p->cache_size = new_size;
                 p->cache = new_cache;
@@ -235,8 +225,7 @@ instantiate(const struct particle *particle, const struct tag_set *tags)
 
         /* Convert text to glyph masks/images. */
         for (size_t i = 0; i < chars; i++) {
-            const struct fcft_glyph *glyph = fcft_rasterize_char_utf32(
-                font, wtext[i], FCFT_SUBPIXEL_NONE);
+            const struct fcft_glyph *glyph = fcft_rasterize_char_utf32(font, wtext[i], FCFT_SUBPIXEL_NONE);
 
             if (glyph == NULL)
                 continue;
@@ -297,10 +286,7 @@ from_conf(const struct yml_node *node, struct particle *common)
     const struct yml_node *text = yml_get_value(node, "text");
     const struct yml_node *max = yml_get_value(node, "max");
 
-    return string_new(
-        common,
-        yml_value_as_string(text),
-        max != NULL ? yml_value_as_int(max) : 0);
+    return string_new(common, yml_value_as_string(text), max != NULL ? yml_value_as_int(max) : 0);
 }
 
 static bool

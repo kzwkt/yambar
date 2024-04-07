@@ -2,13 +2,14 @@
 
 #define LOG_MODULE "list"
 #define LOG_ENABLE_DBG 0
-#include "../log.h"
-#include "../config.h"
 #include "../config-verify.h"
+#include "../config.h"
+#include "../log.h"
 #include "../particle.h"
 #include "../plugin.h"
 
-struct private {
+struct private
+{
     struct particle **particles;
     size_t count;
     int left_spacing, right_spacing;
@@ -20,7 +21,6 @@ struct eprivate {
     size_t count;
     int left_spacing, right_spacing;
 };
-
 
 static void
 exposable_destroy(struct exposable *exposable)
@@ -86,16 +86,12 @@ expose(const struct exposable *exposable, pixman_image_t *pix, int x, int y, int
 }
 
 static void
-on_mouse(struct exposable *exposable, struct bar *bar,
-         enum mouse_event event, enum mouse_button btn, int x, int y)
+on_mouse(struct exposable *exposable, struct bar *bar, enum mouse_event event, enum mouse_button btn, int x, int y)
 {
     const struct particle *p = exposable->particle;
     const struct eprivate *e = exposable->private;
 
-    if ((event == ON_MOUSE_MOTION &&
-         exposable->particle->have_on_click_template) ||
-        exposable->on_click[btn] != NULL)
-    {
+    if ((event == ON_MOUSE_MOTION && exposable->particle->have_on_click_template) || exposable->on_click[btn] != NULL) {
         /* We have our own handler */
         exposable_default_on_mouse(exposable, bar, event, btn, x, y);
         return;
@@ -105,8 +101,7 @@ on_mouse(struct exposable *exposable, struct bar *bar,
     for (size_t i = 0; i < e->count; i++) {
         if (x >= px && x < px + e->exposables[i]->width) {
             if (e->exposables[i]->on_mouse != NULL) {
-                e->exposables[i]->on_mouse(
-                    e->exposables[i], bar, event, btn, x - px, y);
+                e->exposables[i]->on_mouse(e->exposables[i], bar, event, btn, x - px, y);
             }
             return;
         }
@@ -157,9 +152,8 @@ particle_destroy(struct particle *particle)
 }
 
 struct particle *
-particle_list_new(struct particle *common,
-                  struct particle *particles[], size_t count,
-                  int left_spacing, int right_spacing)
+particle_list_new(struct particle *common, struct particle *particles[], size_t count, int left_spacing,
+                  int right_spacing)
 {
     struct private *p = calloc(1, sizeof(*p));
     p->particles = malloc(count * sizeof(p->particles[0]));
@@ -184,21 +178,20 @@ from_conf(const struct yml_node *node, struct particle *common)
     const struct yml_node *_left_spacing = yml_get_value(node, "left-spacing");
     const struct yml_node *_right_spacing = yml_get_value(node, "right-spacing");
 
-    int left_spacing = spacing != NULL ? yml_value_as_int(spacing) :
-        _left_spacing != NULL ? yml_value_as_int(_left_spacing) : 0;
-    int right_spacing = spacing != NULL ? yml_value_as_int(spacing) :
-        _right_spacing != NULL ? yml_value_as_int(_right_spacing) : 2;
+    int left_spacing = spacing != NULL         ? yml_value_as_int(spacing)
+                       : _left_spacing != NULL ? yml_value_as_int(_left_spacing)
+                                               : 0;
+    int right_spacing = spacing != NULL          ? yml_value_as_int(spacing)
+                        : _right_spacing != NULL ? yml_value_as_int(_right_spacing)
+                                                 : 2;
 
     size_t count = yml_list_length(items);
     struct particle *parts[count];
 
     size_t idx = 0;
-    for (struct yml_list_iter it = yml_list_iter(items);
-         it.node != NULL;
-         yml_list_next(&it), idx++)
-    {
-        parts[idx] = conf_to_particle(
-            it.node, (struct conf_inherit){common->font, common->font_shaping, common->foreground});
+    for (struct yml_list_iter it = yml_list_iter(items); it.node != NULL; yml_list_next(&it), idx++) {
+        parts[idx]
+            = conf_to_particle(it.node, (struct conf_inherit){common->font, common->font_shaping, common->foreground});
     }
 
     return particle_list_new(common, parts, count, left_spacing, right_spacing);

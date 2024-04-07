@@ -3,6 +3,7 @@ BasedOnStyle: GNU
 IndentWidth: 4
 ---
 Language: Cpp
+Standard: Auto
 PointerAlignment: Right
 ColumnLimit: 120
 BreakBeforeBraces: Custom
@@ -15,3 +16,9 @@ BraceWrapping:
 
 SpaceBeforeParens: ControlStatements
 Cpp11BracedListStyle: true
+
+WhitespaceSensitiveMacros:
+  - REGISTER_CORE_PARTICLE
+  - REGISTER_CORE_DECORATION
+  - REGISTER_CORE_PLUGIN
+  - REGISTER_CORE_MODULE

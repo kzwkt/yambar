@@ -1,15 +1,15 @@
 #include "i3-common.h"
 
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <assert.h>
 
 #include <poll.h>
 
 #if defined(ENABLE_X11)
- #include <xcb/xcb.h>
- #include <xcb/xcb_aux.h>
+#include <xcb/xcb.h>
+#include <xcb/xcb_aux.h>
 #endif
 
 #include <json-c/json_tokener.h>
@@ -19,7 +19,7 @@
 #include "../log.h"
 
 #if defined(ENABLE_X11)
- #include "../xcb.h"
+#include "../xcb.h"
 #endif
 
 #include "i3-ipc.h"
@@ -41,14 +41,11 @@ get_socket_address_x11(struct sockaddr_un *addr)
     xcb_atom_t atom = get_atom(conn, "I3_SOCKET_PATH");
     assert(atom != XCB_ATOM_NONE);
 
-    xcb_get_property_cookie_t cookie
-        = xcb_get_property_unchecked(
-            conn, false, screen->root, atom,
-            XCB_GET_PROPERTY_TYPE_ANY, 0, sizeof(addr->sun_path));
+    xcb_get_property_cookie_t cookie = xcb_get_property_unchecked(conn, false, screen->root, atom,
+                                                                  XCB_GET_PROPERTY_TYPE_ANY, 0, sizeof(addr->sun_path));
 
     xcb_generic_error_t *err = NULL;
-    xcb_get_property_reply_t *reply =
-        xcb_get_property_reply(conn, cookie, &err);
+    xcb_get_property_reply_t *reply = xcb_get_property_reply(conn, cookie, &err);
     bool ret = false;
 
     if (err != NULL) {
@@ -102,11 +99,7 @@ bool
 i3_send_pkg(int sock, int cmd, char *data)
 {
     const size_t size = data != NULL ? strlen(data) : 0;
-    const i3_ipc_header_t hdr = {
-        .magic = I3_IPC_MAGIC,
-        .size = size,
-        .type = cmd
-    };
+    const i3_ipc_header_t hdr = {.magic = I3_IPC_MAGIC, .size = size, .type = cmd};
 
     if (write(sock, &hdr, sizeof(hdr)) != (ssize_t)sizeof(hdr))
         return false;
@@ -120,8 +113,7 @@ i3_send_pkg(int sock, int cmd, char *data)
 }
 
 bool
-i3_receive_loop(int abort_fd, int sock,
-                const struct i3_ipc_callbacks *cbs, void *data)
+i3_receive_loop(int abort_fd, int sock, const struct i3_ipc_callbacks *cbs, void *data)
 {
     /* Initial reply typically requires a couple of KB. But we often
      * need more later. For example, switching workspaces can result
@@ -133,10 +125,7 @@ i3_receive_loop(int abort_fd, int sock,
     bool err = false;
 
     while (!err) {
-        struct pollfd fds[] = {
-            {.fd = abort_fd, .events = POLLIN},
-            {.fd = sock, .events = POLLIN}
-        };
+        struct pollfd fds[] = {{.fd = abort_fd, .events = POLLIN}, {.fd = sock, .events = POLLIN}};
 
         int res = poll(fds, 2, -1);
         if (res <= 0) {
@@ -159,13 +148,11 @@ i3_receive_loop(int abort_fd, int sock,
 
         /* Grow receive buffer, if necessary */
         if (buf_idx == reply_buf_size) {
-            LOG_DBG("growing reply buffer: %zu -> %zu",
-                    reply_buf_size, reply_buf_size * 2);
+            LOG_DBG("growing reply buffer: %zu -> %zu", reply_buf_size, reply_buf_size * 2);
 
             char *new_buf = realloc(buf, reply_buf_size * 2);
             if (new_buf == NULL) {
-                LOG_ERR("failed to grow reply buffer from %zu to %zu bytes",
-                        reply_buf_size, reply_buf_size * 2);
+                LOG_ERR("failed to grow reply buffer from %zu to %zu bytes", reply_buf_size, reply_buf_size * 2);
                 err = true;
                 break;
             }
@@ -188,10 +175,8 @@ i3_receive_loop(int abort_fd, int sock,
         while (!err && buf_idx >= sizeof(i3_ipc_header_t)) {
             const i3_ipc_header_t *hdr = (const i3_ipc_header_t *)buf;
             if (strncmp(hdr->magic, I3_IPC_MAGIC, sizeof(hdr->magic)) != 0) {
-                LOG_ERR(
-                    "i3 IPC header magic mismatch: expected \"%.*s\", got \"%.*s\"",
-                    (int)sizeof(hdr->magic), I3_IPC_MAGIC,
-                    (int)sizeof(hdr->magic), hdr->magic);
+                LOG_ERR("i3 IPC header magic mismatch: expected \"%.*s\", got \"%.*s\"", (int)sizeof(hdr->magic),
+                        I3_IPC_MAGIC, (int)sizeof(hdr->magic), hdr->magic);
 
                 err = true;
                 break;
@@ -210,10 +195,10 @@ i3_receive_loop(int abort_fd, int sock,
             char json_str[hdr->size + 1];
             memcpy(json_str, &buf[sizeof(*hdr)], hdr->size);
             json_str[hdr->size] = '\0';
-            //printf("raw: %s\n", json_str);
+            // printf("raw: %s\n", json_str);
             LOG_DBG("raw: %s\n", json_str);
 
-            //json_tokener *tokener = json_tokener_new();
+            // json_tokener *tokener = json_tokener_new();
             struct json_object *json = json_tokener_parse(json_str);
             if (json == NULL) {
                 LOG_ERR("failed to parse json");
@@ -262,13 +247,13 @@ i3_receive_loop(int abort_fd, int sock,
                 break;
 #endif
             /* Sway extensions */
-            case 100:  /* IPC_GET_INPUTS */
+            case 100: /* IPC_GET_INPUTS */
                 pkt_handler = cbs->reply_inputs;
                 break;
 
-            /*
-             * Events
-             */
+                /*
+                 * Events
+                 */
 
             case I3_IPC_EVENT_WORKSPACE:
                 pkt_handler = cbs->event_workspace;
@@ -295,7 +280,7 @@ i3_receive_loop(int abort_fd, int sock,
                 pkt_handler = cbs->event_tick;
                 break;
 
-            /* Sway extensions */
+                /* Sway extensions */
 #define SWAY_IPC_EVENT_INPUT ((1u << 31) | 21)
             case SWAY_IPC_EVENT_INPUT:
                 pkt_handler = cbs->event_input;

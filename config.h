@@ -1,9 +1,9 @@
 #pragma once
 
-#include <fcft/fcft.h>
-#include "yml.h"
 #include "bar/bar.h"
 #include "font-shaping.h"
+#include "yml.h"
+#include <fcft/fcft.h>
 
 struct bar;
 struct particle;
@@ -25,6 +25,5 @@ struct conf_inherit {
     pixman_color_t foreground;
 };
 
-struct particle *conf_to_particle(
-    const struct yml_node *node, struct conf_inherit inherited);
+struct particle *conf_to_particle(const struct yml_node *node, struct conf_inherit inherited);
 struct deco *conf_to_deco(const struct yml_node *node);

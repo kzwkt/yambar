@@ -1,5 +1,6 @@
 #include "log.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -9,7 +10,6 @@
 #include <string.h>
 #include <syslog.h>
 #include <unistd.h>
-#include <assert.h>
 
 #define ALEN(v) (sizeof(v) / sizeof((v)[0]))
 #define UNUSED __attribute__((unused))
@@ -32,23 +32,22 @@ static const struct {
 };
 
 void
-log_init(enum log_colorize _colorize, bool _do_syslog,
-         enum log_facility syslog_facility, enum log_class _log_level)
+log_init(enum log_colorize _colorize, bool _do_syslog, enum log_facility syslog_facility, enum log_class _log_level)
 {
     static const int facility_map[] = {
         [LOG_FACILITY_USER] = LOG_USER,
         [LOG_FACILITY_DAEMON] = LOG_DAEMON,
     };
 
-    colorize = _colorize == LOG_COLORIZE_NEVER
-        ? false : _colorize == LOG_COLORIZE_ALWAYS
-        ? true : isatty(STDERR_FILENO);
+    colorize = _colorize == LOG_COLORIZE_NEVER    ? false
+               : _colorize == LOG_COLORIZE_ALWAYS ? true
+                                                  : isatty(STDERR_FILENO);
     do_syslog = _do_syslog;
     log_level = _log_level;
 
     int slvl = log_level_map[_log_level].syslog_equivalent;
     if (do_syslog && slvl != -1) {
-        openlog(NULL, /*LOG_PID*/0, facility_map[syslog_facility]);
+        openlog(NULL, /*LOG_PID*/ 0, facility_map[syslog_facility]);
         setlogmask(LOG_UPTO(slvl));
     }
 }
@@ -61,8 +60,8 @@ log_deinit(void)
 }
 
 static void
-_log(enum log_class log_class, const char *module, const char *file, int lineno,
-     const char *fmt, int sys_errno, va_list va)
+_log(enum log_class log_class, const char *module, const char *file, int lineno, const char *fmt, int sys_errno,
+     va_list va)
 {
     assert(log_class > LOG_CLASS_NONE);
     assert(log_class < ALEN(log_level_map));
@@ -92,9 +91,8 @@ _log(enum log_class log_class, const char *module, const char *file, int lineno,
 }
 
 static void
-_sys_log(enum log_class log_class, const char *module,
-         const char UNUSED *file, int UNUSED lineno,
-         const char *fmt, int sys_errno, va_list va)
+_sys_log(enum log_class log_class, const char *module, const char UNUSED *file, int UNUSED lineno, const char *fmt,
+         int sys_errno, va_list va)
 {
     assert(log_class > LOG_CLASS_NONE);
     assert(log_class < ALEN(log_level_map));
@@ -119,8 +117,7 @@ _sys_log(enum log_class log_class, const char *module,
 }
 
 void
-log_msg_va(enum log_class log_class, const char *module,
-           const char *file, int lineno, const char *fmt, va_list va)
+log_msg_va(enum log_class log_class, const char *module, const char *file, int lineno, const char *fmt, va_list va)
 {
     va_list va2;
     va_copy(va2, va);
@@ -130,8 +127,7 @@ log_msg_va(enum log_class log_class, const char *module,
 }
 
 void
-log_msg(enum log_class log_class, const char *module,
-        const char *file, int lineno, const char *fmt, ...)
+log_msg(enum log_class log_class, const char *module, const char *file, int lineno, const char *fmt, ...)
 {
     va_list va;
     va_start(va, fmt);
@@ -140,17 +136,13 @@ log_msg(enum log_class log_class, const char *module,
 }
 
 void
-log_errno_va(enum log_class log_class, const char *module,
-             const char *file, int lineno,
-             const char *fmt, va_list va)
+log_errno_va(enum log_class log_class, const char *module, const char *file, int lineno, const char *fmt, va_list va)
 {
     log_errno_provided_va(log_class, module, file, lineno, errno, fmt, va);
 }
 
 void
-log_errno(enum log_class log_class, const char *module,
-          const char *file, int lineno,
-          const char *fmt, ...)
+log_errno(enum log_class log_class, const char *module, const char *file, int lineno, const char *fmt, ...)
 {
     va_list va;
     va_start(va, fmt);
@@ -159,8 +151,7 @@ log_errno(enum log_class log_class, const char *module,
 }
 
 void
-log_errno_provided_va(enum log_class log_class, const char *module,
-                      const char *file, int lineno, int errno_copy,
+log_errno_provided_va(enum log_class log_class, const char *module, const char *file, int lineno, int errno_copy,
                       const char *fmt, va_list va)
 {
     va_list va2;
@@ -171,8 +162,7 @@ log_errno_provided_va(enum log_class log_class, const char *module,
 }
 
 void
-log_errno_provided(enum log_class log_class, const char *module,
-                   const char *file, int lineno, int errno_copy,
+log_errno_provided(enum log_class log_class, const char *module, const char *file, int lineno, int errno_copy,
                    const char *fmt, ...)
 {
     va_list va;

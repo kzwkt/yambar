@@ -35,9 +35,9 @@ void module_default_destroy(struct module *mod);
 struct exposable *module_begin_expose(struct module *mod);
 
 /* List of attributes *all* modules implement */
-#define MODULE_COMMON_ATTRS                        \
-    {"content", true, &conf_verify_particle},      \
-    {"anchors", false, NULL},                      \
-    {"font", false, &conf_verify_font},            \
-    {"foreground", false, &conf_verify_color},     \
-    {NULL, false, NULL}
+#define MODULE_COMMON_ATTRS                                                                                            \
+    {"content", true, &conf_verify_particle}, {"anchors", false, NULL}, {"font", false, &conf_verify_font},            \
+        {"foreground", false, &conf_verify_color},                                                                     \
+    {                                                                                                                  \
+        NULL, false, NULL                                                                                              \
+    }

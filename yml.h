@@ -1,6 +1,6 @@
 #pragma once
-#include <stdio.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 struct yml_node;
 
@@ -11,10 +11,8 @@ bool yml_is_scalar(const struct yml_node *node);
 bool yml_is_dict(const struct yml_node *node);
 bool yml_is_list(const struct yml_node *node);
 
-const struct yml_node *yml_get_value(
-    const struct yml_node *node, const char *path);
-const struct yml_node *yml_get_key(
-    struct yml_node const *node, char const *path);
+const struct yml_node *yml_get_value(const struct yml_node *node, const char *path);
+const struct yml_node *yml_get_key(struct yml_node const *node, char const *path);
 
 struct yml_list_iter {
     const struct yml_node *node;

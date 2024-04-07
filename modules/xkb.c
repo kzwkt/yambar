@@ -1,7 +1,7 @@
-#include <stdlib.h>
-#include <string.h>
 #include <assert.h>
 #include <errno.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include <poll.h>
 
@@ -10,10 +10,10 @@
 
 #define LOG_MODULE "xkb"
 #define LOG_ENABLE_DBG 0
-#include "../log.h"
 #include "../bar/bar.h"
-#include "../config.h"
 #include "../config-verify.h"
+#include "../config.h"
+#include "../log.h"
 #include "../plugin.h"
 #include "../xcb.h"
 
@@ -32,7 +32,8 @@ struct indicators {
     char **names;
 };
 
-struct private {
+struct private
+{
     struct particle *label;
     struct indicators indicators;
     struct layouts layouts;
@@ -117,10 +118,8 @@ xkb_enable(xcb_connection_t *conn)
 {
     xcb_generic_error_t *err;
 
-    xcb_xkb_use_extension_cookie_t cookie = xcb_xkb_use_extension(
-        conn, XCB_XKB_MAJOR_VERSION, XCB_XKB_MINOR_VERSION);
-    xcb_xkb_use_extension_reply_t *reply = xcb_xkb_use_extension_reply(
-        conn, cookie, &err);
+    xcb_xkb_use_extension_cookie_t cookie = xcb_xkb_use_extension(conn, XCB_XKB_MAJOR_VERSION, XCB_XKB_MINOR_VERSION);
+    xcb_xkb_use_extension_reply_t *reply = xcb_xkb_use_extension_reply(conn, cookie, &err);
 
     if (err != NULL) {
         LOG_ERR("failed to query for XKB extension: %s", xcb_error(err));
@@ -142,8 +141,7 @@ xkb_enable(xcb_connection_t *conn)
 static int
 get_xkb_event_base(xcb_connection_t *conn)
 {
-    const struct xcb_query_extension_reply_t *reply = xcb_get_extension_data(
-        conn, &xcb_xkb_id);
+    const struct xcb_query_extension_reply_t *reply = xcb_get_extension_data(conn, &xcb_xkb_id);
 
     if (reply == NULL) {
         LOG_ERR("failed to get XKB extension data");
@@ -159,19 +157,14 @@ get_xkb_event_base(xcb_connection_t *conn)
 }
 
 static bool
-get_layouts_and_indicators(xcb_connection_t *conn, struct layouts *layouts,
-                           struct indicators *indicators)
+get_layouts_and_indicators(xcb_connection_t *conn, struct layouts *layouts, struct indicators *indicators)
 {
     xcb_generic_error_t *err;
-    xcb_xkb_get_names_cookie_t cookie = xcb_xkb_get_names(
-        conn,
-        XCB_XKB_ID_USE_CORE_KBD,
-        XCB_XKB_NAME_DETAIL_GROUP_NAMES |
-        XCB_XKB_NAME_DETAIL_SYMBOLS |
-        XCB_XKB_NAME_DETAIL_INDICATOR_NAMES);
+    xcb_xkb_get_names_cookie_t cookie = xcb_xkb_get_names(conn, XCB_XKB_ID_USE_CORE_KBD,
+                                                          XCB_XKB_NAME_DETAIL_GROUP_NAMES | XCB_XKB_NAME_DETAIL_SYMBOLS
+                                                              | XCB_XKB_NAME_DETAIL_INDICATOR_NAMES);
 
-    xcb_xkb_get_names_reply_t *reply = xcb_xkb_get_names_reply(
-        conn, cookie, &err);
+    xcb_xkb_get_names_reply_t *reply = xcb_xkb_get_names_reply(conn, cookie, &err);
 
     if (err != NULL) {
         LOG_ERR("failed to get layouts and indicators: %s", xcb_error(err));
@@ -181,22 +174,18 @@ get_layouts_and_indicators(xcb_connection_t *conn, struct layouts *layouts,
 
     xcb_xkb_get_names_value_list_t vlist;
     void *buf = xcb_xkb_get_names_value_list(reply);
-    xcb_xkb_get_names_value_list_unpack(
-        buf, reply->nTypes, reply->indicators, reply->virtualMods,
-        reply->groupNames, reply->nKeys, reply->nKeyAliases,
-        reply->nRadioGroups, reply->which, &vlist);
+    xcb_xkb_get_names_value_list_unpack(buf, reply->nTypes, reply->indicators, reply->virtualMods, reply->groupNames,
+                                        reply->nKeys, reply->nKeyAliases, reply->nRadioGroups, reply->which, &vlist);
 
     /* Number of groups (aka layouts) */
     layouts->count = xcb_xkb_get_names_value_list_groups_length(reply, &vlist);
     layouts->layouts = calloc(layouts->count, sizeof(layouts->layouts[0]));
 
     /* Number of indicators */
-    indicators->count = xcb_xkb_get_names_value_list_indicator_names_length(
-        reply, &vlist);
+    indicators->count = xcb_xkb_get_names_value_list_indicator_names_length(reply, &vlist);
     indicators->names = calloc(indicators->count, sizeof(indicators->names[0]));
 
-    xcb_get_atom_name_cookie_t symbols_name_cookie = xcb_get_atom_name(
-        conn, vlist.symbolsName);
+    xcb_get_atom_name_cookie_t symbols_name_cookie = xcb_get_atom_name(conn, vlist.symbolsName);
 
     xcb_get_atom_name_cookie_t group_name_cookies[layouts->count];
     for (size_t i = 0; i < layouts->count; i++)
@@ -209,17 +198,14 @@ get_layouts_and_indicators(xcb_connection_t *conn, struct layouts *layouts,
     char *symbols = NULL;
 
     /* Get layout short names (e.g. "us") */
-    xcb_get_atom_name_reply_t *atom_name = xcb_get_atom_name_reply(
-        conn, symbols_name_cookie, &err);
+    xcb_get_atom_name_reply_t *atom_name = xcb_get_atom_name_reply(conn, symbols_name_cookie, &err);
     if (err != NULL) {
         LOG_ERR("failed to get 'symbols' atom name: %s", xcb_error(err));
         free(err);
         goto err;
     }
 
-    symbols = strndup(
-        xcb_get_atom_name_name(atom_name),
-        xcb_get_atom_name_name_length(atom_name));
+    symbols = strndup(xcb_get_atom_name_name(atom_name), xcb_get_atom_name_name_length(atom_name));
     LOG_DBG("symbols: %s", symbols);
     free(atom_name);
 
@@ -232,9 +218,7 @@ get_layouts_and_indicators(xcb_connection_t *conn, struct layouts *layouts,
             goto err;
         }
 
-        layouts->layouts[i].name = strndup(
-            xcb_get_atom_name_name(atom_name),
-            xcb_get_atom_name_name_length(atom_name));
+        layouts->layouts[i].name = strndup(xcb_get_atom_name_name(atom_name), xcb_get_atom_name_name_length(atom_name));
 
         LOG_DBG("layout #%zd: long name: %s", i, layouts->layouts[i].name);
         free(atom_name);
@@ -249,9 +233,7 @@ get_layouts_and_indicators(xcb_connection_t *conn, struct layouts *layouts,
             goto err;
         }
 
-        indicators->names[i] = strndup(
-            xcb_get_atom_name_name(atom_name),
-            xcb_get_atom_name_name_length(atom_name));
+        indicators->names[i] = strndup(xcb_get_atom_name_name(atom_name), xcb_get_atom_name_name_length(atom_name));
 
         LOG_DBG("indicator #%zd: %s", i, indicators->names[i]);
         free(atom_name);
@@ -259,8 +241,7 @@ get_layouts_and_indicators(xcb_connection_t *conn, struct layouts *layouts,
 
     /* e.g. pc+us+inet(evdev)+group(..) */
     size_t layout_idx = 0;
-    for (char *tok_ctx = NULL, *tok = strtok_r(symbols, "+", &tok_ctx);
-         tok != NULL;
+    for (char *tok_ctx = NULL, *tok = strtok_r(symbols, "+", &tok_ctx); tok != NULL;
          tok = strtok_r(NULL, "+", &tok_ctx)) {
 
         char *fname = strtok(tok, "()");
@@ -279,8 +260,7 @@ get_layouts_and_indicators(xcb_connection_t *conn, struct layouts *layouts,
             continue;
 
         if (layout_idx >= layouts->count) {
-            LOG_ERR("layout vs group name count mismatch: %zd > %zd",
-                    layout_idx + 1, layouts->count);
+            LOG_ERR("layout vs group name count mismatch: %zd > %zd", layout_idx + 1, layouts->count);
             goto err;
         }
 
@@ -290,8 +270,7 @@ get_layouts_and_indicators(xcb_connection_t *conn, struct layouts *layouts,
     }
 
     if (layout_idx != layouts->count) {
-        LOG_ERR("layout vs group name count mismatch: %zd != %zd",
-                layout_idx, layouts->count);
+        LOG_ERR("layout vs group name count mismatch: %zd != %zd", layout_idx, layouts->count);
         goto err;
     }
 
@@ -312,10 +291,8 @@ get_current_layout(xcb_connection_t *conn)
 {
     xcb_generic_error_t *err;
 
-    xcb_xkb_get_state_cookie_t cookie = xcb_xkb_get_state(
-        conn, XCB_XKB_ID_USE_CORE_KBD);
-    xcb_xkb_get_state_reply_t *reply = xcb_xkb_get_state_reply(
-        conn, cookie, &err);
+    xcb_xkb_get_state_cookie_t cookie = xcb_xkb_get_state(conn, XCB_XKB_ID_USE_CORE_KBD);
+    xcb_xkb_get_state_reply_t *reply = xcb_xkb_get_state_reply(conn, cookie, &err);
 
     if (err != NULL) {
         LOG_ERR("failed to get XKB state: %s", xcb_error(err));
@@ -332,10 +309,8 @@ static uint32_t
 get_indicator_state(xcb_connection_t *conn)
 {
     xcb_generic_error_t *err;
-    xcb_xkb_get_indicator_state_cookie_t cookie = xcb_xkb_get_indicator_state(
-        conn, XCB_XKB_ID_USE_CORE_KBD);
-    xcb_xkb_get_indicator_state_reply_t *reply = xcb_xkb_get_indicator_state_reply(
-        conn, cookie, &err);
+    xcb_xkb_get_indicator_state_cookie_t cookie = xcb_xkb_get_indicator_state(conn, XCB_XKB_ID_USE_CORE_KBD);
+    xcb_xkb_get_indicator_state_reply_t *reply = xcb_xkb_get_indicator_state_reply(conn, cookie, &err);
 
     if (err != NULL) {
         LOG_ERR("failed to get indicator state: %s", xcb_error(err));
@@ -353,23 +328,14 @@ get_indicator_state(xcb_connection_t *conn)
 static bool
 register_for_events(xcb_connection_t *conn)
 {
-    xcb_void_cookie_t cookie = xcb_xkb_select_events_checked(
-        conn,
-        XCB_XKB_ID_USE_CORE_KBD,
-        (
-            XCB_XKB_EVENT_TYPE_NEW_KEYBOARD_NOTIFY |
-            XCB_XKB_EVENT_TYPE_STATE_NOTIFY |
-            XCB_XKB_EVENT_TYPE_MAP_NOTIFY |
-            XCB_XKB_EVENT_TYPE_INDICATOR_STATE_NOTIFY
-            ),
-        0,
-        (
-            XCB_XKB_EVENT_TYPE_NEW_KEYBOARD_NOTIFY |
-            XCB_XKB_EVENT_TYPE_STATE_NOTIFY |
-            XCB_XKB_EVENT_TYPE_MAP_NOTIFY |
-            XCB_XKB_EVENT_TYPE_INDICATOR_STATE_NOTIFY
-            ),
-        0, 0, NULL);
+    xcb_void_cookie_t cookie
+        = xcb_xkb_select_events_checked(conn, XCB_XKB_ID_USE_CORE_KBD,
+                                        (XCB_XKB_EVENT_TYPE_NEW_KEYBOARD_NOTIFY | XCB_XKB_EVENT_TYPE_STATE_NOTIFY
+                                         | XCB_XKB_EVENT_TYPE_MAP_NOTIFY | XCB_XKB_EVENT_TYPE_INDICATOR_STATE_NOTIFY),
+                                        0,
+                                        (XCB_XKB_EVENT_TYPE_NEW_KEYBOARD_NOTIFY | XCB_XKB_EVENT_TYPE_STATE_NOTIFY
+                                         | XCB_XKB_EVENT_TYPE_MAP_NOTIFY | XCB_XKB_EVENT_TYPE_INDICATOR_STATE_NOTIFY),
+                                        0, 0, NULL);
 
     xcb_generic_error_t *err = xcb_request_check(conn, cookie);
     if (err != NULL) {
@@ -393,10 +359,7 @@ event_loop(struct module *mod, xcb_connection_t *conn, int xkb_event_base)
     assert(xcb_fd >= 0);
 
     while (!has_error) {
-        struct pollfd pfds[] = {
-            {.fd = mod->abort_fd, .events = POLLIN },
-            {.fd = xcb_fd, .events = POLLIN | POLLHUP }
-        };
+        struct pollfd pfds[] = {{.fd = mod->abort_fd, .events = POLLIN}, {.fd = xcb_fd, .events = POLLIN | POLLHUP}};
 
         /* Use poll() since xcb_wait_for_events() doesn't return on signals */
         if (poll(pfds, sizeof(pfds) / sizeof(pfds[0]), -1) < 0) {
@@ -425,9 +388,7 @@ event_loop(struct module *mod, xcb_connection_t *conn, int xkb_event_base)
          * not for long though...
          */
 
-        for (xcb_generic_event_t *_evt = xcb_wait_for_event(conn);
-             _evt != NULL;
-             _evt = xcb_poll_for_event(conn)) {
+        for (xcb_generic_event_t *_evt = xcb_wait_for_event(conn); _evt != NULL; _evt = xcb_poll_for_event(conn)) {
 
             if (_evt->response_type != xkb_event_base) {
                 LOG_WARN("non-XKB event ignored: %d", _evt->response_type);
@@ -435,7 +396,7 @@ event_loop(struct module *mod, xcb_connection_t *conn, int xkb_event_base)
                 continue;
             }
 
-            switch(_evt->pad0) {
+            switch (_evt->pad0) {
             default:
                 LOG_WARN("unimplemented XKB event: %d", _evt->pad0);
                 break;
@@ -463,7 +424,7 @@ event_loop(struct module *mod, xcb_connection_t *conn, int xkb_event_base)
                     mtx_unlock(&mod->lock);
                     bar->refresh(bar);
                 } else {
-                     /* Can happen while transitioning to a new map */
+                    /* Can happen while transitioning to a new map */
                     free_layouts(layouts);
                     free_indicators(indicators);
                 }
@@ -472,8 +433,7 @@ event_loop(struct module *mod, xcb_connection_t *conn, int xkb_event_base)
             }
 
             case XCB_XKB_STATE_NOTIFY: {
-                const xcb_xkb_state_notify_event_t *evt =
-                    (const xcb_xkb_state_notify_event_t *)_evt;
+                const xcb_xkb_state_notify_event_t *evt = (const xcb_xkb_state_notify_event_t *)_evt;
 
                 if (evt->changed & XCB_XKB_STATE_PART_GROUP_STATE) {
                     mtx_lock(&mod->lock);
@@ -490,8 +450,8 @@ event_loop(struct module *mod, xcb_connection_t *conn, int xkb_event_base)
                 break;
 
             case XCB_XKB_INDICATOR_STATE_NOTIFY: {
-                const xcb_xkb_indicator_state_notify_event_t *evt =
-                    (const xcb_xkb_indicator_state_notify_event_t *)_evt;
+                const xcb_xkb_indicator_state_notify_event_t *evt
+                    = (const xcb_xkb_indicator_state_notify_event_t *)_evt;
 
 #if 0
                 size_t idx = __builtin_ctz(evt->stateChanged);
@@ -508,8 +468,7 @@ event_loop(struct module *mod, xcb_connection_t *conn, int xkb_event_base)
                         continue;
 
                     bool enabled = (evt->state >> i) & 1;
-                    LOG_DBG("%s: %s", m->indicators.names[i],
-                            enabled ? "enabled" : "disabled");
+                    LOG_DBG("%s: %s", m->indicators.names[i], enabled ? "enabled" : "disabled");
 
                     const char *name = m->indicators.names[i];
                     bool is_caps = strcasecmp(name, "caps lock") == 0;
@@ -609,18 +568,12 @@ talk_to_xkb(struct module *mod, xcb_connection_t *conn)
         size_t idx = 0;
 
         for (size_t i = 0; i < layouts.count; i++) {
-            idx += snprintf(&buf[idx], sizeof(buf) - idx, "%s%s (%s)%s",
-                            i == m->current ? "*" : "",
-                            layouts.layouts[i].name,
-                            layouts.layouts[i].symbol,
-                            i + 1 < layouts.count ? ", " : "");
+            idx += snprintf(&buf[idx], sizeof(buf) - idx, "%s%s (%s)%s", i == m->current ? "*" : "",
+                            layouts.layouts[i].name, layouts.layouts[i].symbol, i + 1 < layouts.count ? ", " : "");
         }
 
-        LOG_INFO("layouts: %s, caps-lock:%s, num-lock:%s, scroll-lock:%s",
-                 buf,
-                 caps_lock ? "on" : "off",
-                 num_lock ? "on" : "off",
-                 scroll_lock ? "on" : "off");
+        LOG_INFO("layouts: %s, caps-lock:%s, num-lock:%s, scroll-lock:%s", buf, caps_lock ? "on" : "off",
+                 num_lock ? "on" : "off", scroll_lock ? "on" : "off");
     }
 
     mtx_lock(&mod->lock);

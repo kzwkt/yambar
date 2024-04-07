@@ -1,17 +1,17 @@
+#include <assert.h>
+#include <errno.h>
+#include <poll.h>
 #include <stdbool.h>
 #include <string.h>
-#include <errno.h>
-#include <assert.h>
-#include <poll.h>
 
-#include <wayland-client.h>
 #include <tllist.h>
+#include <wayland-client.h>
 
 #define LOG_MODULE "river"
 #define LOG_ENABLE_DBG 0
 #include "../log.h"
-#include "../plugin.h"
 #include "../particles/dynlist.h"
+#include "../plugin.h"
 
 #include "river-status-unstable-v1.h"
 #include "xdg-output-unstable-v1.h"
@@ -49,7 +49,8 @@ struct seat {
     struct output *output;
 };
 
-struct private {
+struct private
+{
     struct module *mod;
     struct zxdg_output_manager_v1 *xdg_output_manager;
     struct zriver_status_manager_v1 *status_manager;
@@ -92,13 +93,12 @@ content(struct module *mod)
     uint32_t output_focused = 0;
     uint32_t seat_focused = 0;
 
-    tll_foreach(m->outputs, it) {
+    tll_foreach(m->outputs, it)
+    {
         const struct output *output = &it->item;
 
-        if (!m->all_monitors &&
-            output_bar_is_on != NULL && output->name != NULL &&
-            strcmp(output->name, output_bar_is_on) != 0)
-        {
+        if (!m->all_monitors && output_bar_is_on != NULL && output->name != NULL
+            && strcmp(output->name, output_bar_is_on) != 0) {
             continue;
         }
 
@@ -106,7 +106,8 @@ content(struct module *mod)
         urgent |= output->urgent;
         occupied |= output->occupied;
 
-        tll_foreach(m->seats, it2) {
+        tll_foreach(m->seats, it2)
+        {
             const struct seat *seat = &it2->item;
             if (seat->output == output) {
                 seat_focused |= output->focused;
@@ -127,10 +128,7 @@ content(struct module *mod)
         bool is_urgent = urgent & (1u << i);
         bool is_occupied = occupied & (1u << i);
 
-        const char *state =
-            is_urgent ? "urgent" :
-            is_visible ? is_focused ? "focused" : "unfocused" :
-            "invisible";
+        const char *state = is_urgent ? "urgent" : is_visible ? is_focused ? "focused" : "unfocused" : "invisible";
 
 #if 0
         LOG_DBG("tag: #%u, visible=%d, focused=%d, occupied=%d, state=%s",
@@ -155,12 +153,10 @@ content(struct module *mod)
 
     if (m->title != NULL) {
         size_t i = 32;
-        tll_foreach(m->seats, it) {
+        tll_foreach(m->seats, it)
+        {
             const struct seat *seat = &it->item;
-            const char *layout =
-                seat->output != NULL && seat->output->layout != NULL
-                ? seat->output->layout
-                : "";
+            const char *layout = seat->output != NULL && seat->output->layout != NULL ? seat->output->layout : "";
 
             struct tag_set tags = {
                 .tags = (struct tag *[]){
@@ -187,15 +183,15 @@ verify_iface_version(const char *iface, uint32_t version, uint32_t wanted)
     if (version >= wanted)
         return true;
 
-    LOG_ERR("%s: need interface version %u, but compositor only implements %u",
-            iface, wanted, version);
+    LOG_ERR("%s: need interface version %u, but compositor only implements %u", iface, wanted, version);
     return false;
 }
 
 static void
 output_destroy(struct output *output)
 {
-    tll_foreach(output->m->seats, it) {
+    tll_foreach(output->m->seats, it)
+    {
         struct seat *seat = &it->item;
         if (seat->output == output)
             seat->output = NULL;
@@ -223,8 +219,7 @@ seat_destroy(struct seat *seat)
 }
 
 static void
-focused_tags(void *data, struct zriver_output_status_v1 *zriver_output_status_v1,
-             uint32_t tags)
+focused_tags(void *data, struct zriver_output_status_v1 *zriver_output_status_v1, uint32_t tags)
 {
     struct output *output = data;
 
@@ -241,8 +236,7 @@ focused_tags(void *data, struct zriver_output_status_v1 *zriver_output_status_v1
 }
 
 static void
-view_tags(void *data, struct zriver_output_status_v1 *zriver_output_status_v1,
-          struct wl_array *tags)
+view_tags(void *data, struct zriver_output_status_v1 *zriver_output_status_v1, struct wl_array *tags)
 {
     struct output *output = data;
     struct module *mod = output->m->mod;
@@ -254,9 +248,7 @@ view_tags(void *data, struct zriver_output_status_v1 *zriver_output_status_v1,
         /* Each entry in the list is a view, and the value is the tags
          * associated with that view */
         uint32_t *set;
-        wl_array_for_each(set, tags) {
-            output->occupied |= *set;
-        }
+        wl_array_for_each(set, tags) { output->occupied |= *set; }
 
         LOG_DBG("output: %s: occupied tags: 0x%0x", output->name, output->occupied);
     }
@@ -265,8 +257,7 @@ view_tags(void *data, struct zriver_output_status_v1 *zriver_output_status_v1,
 }
 
 static void
-urgent_tags(void *data, struct zriver_output_status_v1 *zriver_output_status_v1,
-            uint32_t tags)
+urgent_tags(void *data, struct zriver_output_status_v1 *zriver_output_status_v1, uint32_t tags)
 {
     struct output *output = data;
     struct module *mod = output->m->mod;
@@ -281,9 +272,7 @@ urgent_tags(void *data, struct zriver_output_status_v1 *zriver_output_status_v1,
 
 #if defined(ZRIVER_OUTPUT_STATUS_V1_LAYOUT_NAME_SINCE_VERSION)
 static void
-layout_name(void *data,
-            struct zriver_output_status_v1 *zriver_output_status_v1,
-            const char *name)
+layout_name(void *data, struct zriver_output_status_v1 *zriver_output_status_v1, const char *name)
 {
     struct output *output = data;
     struct module *mod = output->m->mod;
@@ -300,8 +289,7 @@ layout_name(void *data,
 
 #if defined(ZRIVER_OUTPUT_STATUS_V1_LAYOUT_NAME_CLEAR_SINCE_VERSION)
 static void
-layout_name_clear(void *data,
-				  struct zriver_output_status_v1 *zriver_output_status_v1)
+layout_name_clear(void *data, struct zriver_output_status_v1 *zriver_output_status_v1)
 {
     struct output *output = data;
     struct module *mod = output->m->mod;
@@ -329,15 +317,12 @@ static const struct zriver_output_status_v1_listener river_status_output_listene
 };
 
 static void
-xdg_output_handle_logical_position(void *data,
-                                   struct zxdg_output_v1 *xdg_output,
-                                   int32_t x, int32_t y)
+xdg_output_handle_logical_position(void *data, struct zxdg_output_v1 *xdg_output, int32_t x, int32_t y)
 {
 }
 
 static void
-xdg_output_handle_logical_size(void *data, struct zxdg_output_v1 *xdg_output,
-                               int32_t width, int32_t height)
+xdg_output_handle_logical_size(void *data, struct zxdg_output_v1 *xdg_output, int32_t width, int32_t height)
 {
 }
 
@@ -347,8 +332,7 @@ xdg_output_handle_done(void *data, struct zxdg_output_v1 *xdg_output)
 }
 
 static void
-xdg_output_handle_name(void *data, struct zxdg_output_v1 *xdg_output,
-                       const char *name)
+xdg_output_handle_name(void *data, struct zxdg_output_v1 *xdg_output, const char *name)
 {
     struct output *output = data;
     struct module *mod = output->m->mod;
@@ -363,8 +347,7 @@ xdg_output_handle_name(void *data, struct zxdg_output_v1 *xdg_output,
 }
 
 static void
-xdg_output_handle_description(void *data, struct zxdg_output_v1 *xdg_output,
-                              const char *description)
+xdg_output_handle_description(void *data, struct zxdg_output_v1 *xdg_output, const char *description)
 {
 }
 
@@ -391,36 +374,32 @@ update_output(struct output *output)
             output->status = NULL;
         }
 
-        output->status = zriver_status_manager_v1_get_river_output_status(
-            output->m->status_manager, output->wl_output);
+        output->status = zriver_status_manager_v1_get_river_output_status(output->m->status_manager, output->wl_output);
 
         if (output->status != NULL) {
-            zriver_output_status_v1_add_listener(
-                output->status, &river_status_output_listener, output);
+            zriver_output_status_v1_add_listener(output->status, &river_status_output_listener, output);
         }
     }
 
     if (output->m->xdg_output_manager != NULL && output->xdg_output == NULL) {
-        output->xdg_output = zxdg_output_manager_v1_get_xdg_output(
-            output->m->xdg_output_manager, output->wl_output);
+        output->xdg_output = zxdg_output_manager_v1_get_xdg_output(output->m->xdg_output_manager, output->wl_output);
 
         if (output->xdg_output != NULL) {
-            zxdg_output_v1_add_listener(
-                output->xdg_output, &xdg_output_listener, output);
+            zxdg_output_v1_add_listener(output->xdg_output, &xdg_output_listener, output);
         }
     }
 }
 
 static void
-focused_output(void *data, struct zriver_seat_status_v1 *zriver_seat_status_v1,
-               struct wl_output *wl_output)
+focused_output(void *data, struct zriver_seat_status_v1 *zriver_seat_status_v1, struct wl_output *wl_output)
 {
     struct seat *seat = data;
     struct private *m = seat->m;
     struct module *mod = m->mod;
 
     struct output *output = NULL;
-    tll_foreach(m->outputs, it) {
+    tll_foreach(m->outputs, it)
+    {
         if (it->item.wl_output == wl_output) {
             output = &it->item;
             break;
@@ -441,8 +420,7 @@ focused_output(void *data, struct zriver_seat_status_v1 *zriver_seat_status_v1,
 }
 
 static void
-unfocused_output(void *data, struct zriver_seat_status_v1 *zriver_seat_status_v1,
-                 struct wl_output *wl_output)
+unfocused_output(void *data, struct zriver_seat_status_v1 *zriver_seat_status_v1, struct wl_output *wl_output)
 {
     struct seat *seat = data;
     struct private *m = seat->m;
@@ -451,7 +429,8 @@ unfocused_output(void *data, struct zriver_seat_status_v1 *zriver_seat_status_v1
     mtx_lock(&mod->lock);
     {
         struct output *output = NULL;
-        tll_foreach(m->outputs, it) {
+        tll_foreach(m->outputs, it)
+        {
             if (it->item.wl_output == wl_output) {
                 output = &it->item;
                 break;
@@ -469,8 +448,7 @@ unfocused_output(void *data, struct zriver_seat_status_v1 *zriver_seat_status_v1
 }
 
 static void
-focused_view(void *data, struct zriver_seat_status_v1 *zriver_seat_status_v1,
-             const char *title)
+focused_view(void *data, struct zriver_seat_status_v1 *zriver_seat_status_v1, const char *title)
 {
     struct seat *seat = data;
     struct module *mod = seat->m->mod;
@@ -485,11 +463,9 @@ focused_view(void *data, struct zriver_seat_status_v1 *zriver_seat_status_v1,
 
     const char *output_bar_is_on = mod->bar->output_name(mod->bar);
 
-    if (seat->m->all_monitors ||
-        (output_bar_is_on != NULL &&
-         seat->output != NULL && seat->output->name != NULL &&
-         strcmp(output_bar_is_on, seat->output->name) == 0))
-    {
+    if (seat->m->all_monitors
+        || (output_bar_is_on != NULL && seat->output != NULL && seat->output->name != NULL
+            && strcmp(output_bar_is_on, seat->output->name) == 0)) {
         mtx_lock(&mod->lock);
         {
             free(seat->title);
@@ -502,8 +478,7 @@ focused_view(void *data, struct zriver_seat_status_v1 *zriver_seat_status_v1,
 
 #if defined(ZRIVER_SEAT_STATUS_V1_MODE_SINCE_VERSION)
 static void
-mode(void *data, struct zriver_seat_status_v1 *zriver_seat_status_v1,
-     const char *name)
+mode(void *data, struct zriver_seat_status_v1 *zriver_seat_status_v1, const char *name)
 {
     struct seat *seat = data;
     struct module *mod = seat->m->mod;
@@ -531,8 +506,7 @@ static const struct zriver_seat_status_v1_listener river_seat_status_listener = 
 };
 
 static void
-seat_handle_capabilities(void *data, struct wl_seat *wl_seat,
-                         enum wl_seat_capability caps)
+seat_handle_capabilities(void *data, struct wl_seat *wl_seat, enum wl_seat_capability caps)
 {
 }
 
@@ -569,19 +543,16 @@ update_seat(struct seat *seat)
         seat->status = NULL;
     }
 
-    seat->status = zriver_status_manager_v1_get_river_seat_status(
-        seat->m->status_manager, seat->wl_seat);
+    seat->status = zriver_status_manager_v1_get_river_seat_status(seat->m->status_manager, seat->wl_seat);
 
     if (seat->status == NULL)
         return;
 
-    zriver_seat_status_v1_add_listener(
-        seat->status, &river_seat_status_listener, seat);
+    zriver_seat_status_v1_add_listener(seat->status, &river_seat_status_listener, seat);
 }
 
 static void
-handle_global(void *data, struct wl_registry *registry,
-              uint32_t name, const char *interface, uint32_t version)
+handle_global(void *data, struct wl_registry *registry, uint32_t name, const char *interface, uint32_t version)
 {
     struct private *m = data;
 
@@ -590,8 +561,7 @@ handle_global(void *data, struct wl_registry *registry,
         if (!verify_iface_version(interface, version, required))
             return;
 
-        struct wl_output *wl_output = wl_registry_bind(
-            registry, name, &wl_output_interface, required);
+        struct wl_output *wl_output = wl_registry_bind(registry, name, &wl_output_interface, required);
 
         if (wl_output == NULL)
             return;
@@ -605,8 +575,7 @@ handle_global(void *data, struct wl_registry *registry,
         mtx_lock(&m->mod->lock);
         tll_push_back(m->outputs, output);
         update_output(&tll_back(m->outputs));
-        tll_foreach(m->seats, it)
-            update_seat(&it->item);
+        tll_foreach(m->seats, it) update_seat(&it->item);
         mtx_unlock(&m->mod->lock);
     }
 
@@ -615,12 +584,10 @@ handle_global(void *data, struct wl_registry *registry,
         if (!verify_iface_version(interface, version, required))
             return;
 
-        m->xdg_output_manager = wl_registry_bind(
-            registry, name, &zxdg_output_manager_v1_interface, required);
+        m->xdg_output_manager = wl_registry_bind(registry, name, &zxdg_output_manager_v1_interface, required);
 
         mtx_lock(&m->mod->lock);
-        tll_foreach(m->outputs, it)
-            update_output(&it->item);
+        tll_foreach(m->outputs, it) update_output(&it->item);
         mtx_unlock(&m->mod->lock);
     }
 
@@ -629,8 +596,7 @@ handle_global(void *data, struct wl_registry *registry,
         if (!verify_iface_version(interface, version, required))
             return;
 
-        struct wl_seat *wl_seat = wl_registry_bind(
-            registry, name, &wl_seat_interface, required);
+        struct wl_seat *wl_seat = wl_registry_bind(registry, name, &wl_seat_interface, required);
 
         if (wl_seat == NULL)
             return;
@@ -649,14 +615,11 @@ handle_global(void *data, struct wl_registry *registry,
         if (!verify_iface_version(interface, version, required))
             return;
 
-        m->status_manager = wl_registry_bind(
-            registry, name, &zriver_status_manager_v1_interface, min(version, 4));
+        m->status_manager = wl_registry_bind(registry, name, &zriver_status_manager_v1_interface, min(version, 4));
 
         mtx_lock(&m->mod->lock);
-        tll_foreach(m->outputs, it)
-            update_output(&it->item);
-        tll_foreach(m->seats, it)
-            update_seat(&it->item);
+        tll_foreach(m->outputs, it) update_output(&it->item);
+        tll_foreach(m->seats, it) update_seat(&it->item);
         mtx_unlock(&m->mod->lock);
     }
 }
@@ -667,7 +630,8 @@ handle_global_remove(void *data, struct wl_registry *registry, uint32_t name)
     struct private *m = data;
 
     mtx_lock(&m->mod->lock);
-    tll_foreach(m->outputs, it) {
+    tll_foreach(m->outputs, it)
+    {
         if (it->item.wl_name == name) {
             output_destroy(&it->item);
             tll_remove(m->outputs, it);
@@ -676,7 +640,8 @@ handle_global_remove(void *data, struct wl_registry *registry, uint32_t name)
         }
     }
 
-    tll_foreach(m->seats, it) {
+    tll_foreach(m->seats, it)
+    {
         if (it->item.wl_name == name) {
             seat_destroy(&it->item);
             tll_remove(m->seats, it);
@@ -707,9 +672,8 @@ run(struct module *mod)
         goto out;
     }
 
-    if ((registry = wl_display_get_registry(display)) == NULL ||
-        wl_registry_add_listener(registry, &registry_listener, m) != 0)
-    {
+    if ((registry = wl_display_get_registry(display)) == NULL
+        || wl_registry_add_listener(registry, &registry_listener, m) != 0) {
         LOG_ERR("failed to get Wayland registry");
         goto out;
     }
@@ -754,11 +718,9 @@ run(struct module *mod)
 
     ret = 0;
 out:
-    tll_foreach(m->seats, it)
-        seat_destroy(&it->item);
+    tll_foreach(m->seats, it) seat_destroy(&it->item);
     tll_free(m->seats);
-    tll_foreach(m->outputs, it)
-        output_destroy(&it->item);
+    tll_foreach(m->outputs, it) output_destroy(&it->item);
     tll_free(m->outputs);
 
     if (m->xdg_output_manager != NULL)
@@ -797,10 +759,8 @@ from_conf(const struct yml_node *node, struct conf_inherit inherited)
     const struct yml_node *title = yml_get_value(node, "title");
     const struct yml_node *all_monitors = yml_get_value(node, "all-monitors");
 
-    return river_new(
-        conf_to_particle(c, inherited),
-        title != NULL ? conf_to_particle(title, inherited) : NULL,
-        all_monitors != NULL ? yml_value_as_bool(all_monitors) : false);
+    return river_new(conf_to_particle(c, inherited), title != NULL ? conf_to_particle(title, inherited) : NULL,
+                     all_monitors != NULL ? yml_value_as_bool(all_monitors) : false);
 }
 
 static bool

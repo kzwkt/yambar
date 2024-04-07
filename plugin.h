@@ -1,7 +1,7 @@
 #pragma once
 
-#include "config.h"
 #include "config-verify.h"
+#include "config.h"
 #include "module.h"
 #include "particle.h"
 
@@ -9,14 +9,12 @@ typedef bool (*verify_func_t)(keychain_t *chain, const struct yml_node *node);
 
 struct module_iface {
     verify_func_t verify_conf;
-    struct module *(*from_conf)(
-        const struct yml_node *node, struct conf_inherit inherited);
+    struct module *(*from_conf)(const struct yml_node *node, struct conf_inherit inherited);
 };
 
 struct particle_iface {
     verify_func_t verify_conf;
-    struct particle *(*from_conf)(
-        const struct yml_node *node, struct particle *common);
+    struct particle *(*from_conf)(const struct yml_node *node, struct particle *common);
 };
 
 struct deco_iface {

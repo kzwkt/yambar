@@ -1,18 +1,19 @@
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 #include <stdio.h>
 
 #define LOG_MODULE "ramp"
 #define LOG_ENABLE_DBG 0
-#include "../log.h"
-#include "../config.h"
 #include "../config-verify.h"
+#include "../config.h"
+#include "../log.h"
 #include "../particle.h"
 #include "../plugin.h"
 
-struct private {
+struct private
+{
     char *tag;
     bool use_custom_min;
     long min;
@@ -57,21 +58,16 @@ expose(const struct exposable *exposable, pixman_image_t *pix, int x, int y, int
     struct eprivate *e = exposable->private;
 
     exposable_render_deco(exposable, pix, x, y, height);
-    e->exposable->expose(
-        e->exposable, pix, x + exposable->particle->left_margin, y, height);
+    e->exposable->expose(e->exposable, pix, x + exposable->particle->left_margin, y, height);
 }
 
 static void
-on_mouse(struct exposable *exposable, struct bar *bar, enum mouse_event event,
-         enum mouse_button btn, int x, int y)
+on_mouse(struct exposable *exposable, struct bar *bar, enum mouse_event event, enum mouse_button btn, int x, int y)
 {
     const struct particle *p = exposable->particle;
     const struct eprivate *e = exposable->private;
 
-    if ((event == ON_MOUSE_MOTION &&
-         exposable->particle->have_on_click_template) ||
-        exposable->on_click[btn] != NULL)
-    {
+    if ((event == ON_MOUSE_MOTION && exposable->particle->have_on_click_template) || exposable->on_click[btn] != NULL) {
         /* We have our own handler */
         exposable_default_on_mouse(exposable, bar, event, btn, x, y);
         return;
@@ -118,22 +114,22 @@ instantiate(const struct particle *particle, const struct tag_set *tags)
     max = p->use_custom_max ? p->max : max;
 
     if (min > max) {
-        LOG_WARN(
-            "tag's minimum value is greater than its maximum: "
-            "tag=\"%s\", min=%ld, max=%ld", p->tag, min, max);
+        LOG_WARN("tag's minimum value is greater than its maximum: "
+                 "tag=\"%s\", min=%ld, max=%ld",
+                 p->tag, min, max);
         min = max;
     }
 
     if (value < min) {
-        LOG_WARN(
-            "tag's value is less than its minimum value: "
-            "tag=\"%s\", min=%ld, value=%ld", p->tag, min, value);
+        LOG_WARN("tag's value is less than its minimum value: "
+                 "tag=\"%s\", min=%ld, value=%ld",
+                 p->tag, min, value);
         value = min;
     }
     if (value > max) {
-        LOG_WARN(
-            "tag's value is greater than its maximum value: "
-            "tag=\"%s\", max=%ld, value=%ld", p->tag, max, value);
+        LOG_WARN("tag's value is greater than its maximum value: "
+                 "tag=\"%s\", max=%ld, value=%ld",
+                 p->tag, max, value);
         value = max;
     }
 
@@ -168,10 +164,8 @@ instantiate(const struct particle *particle, const struct tag_set *tags)
 }
 
 static struct particle *
-ramp_new(struct particle *common, const char *tag,
-         struct particle *particles[], size_t count,
-         bool use_custom_min, long min,
-         bool use_custom_max, long max)
+ramp_new(struct particle *common, const char *tag, struct particle *particles[], size_t count, bool use_custom_min,
+         long min, bool use_custom_max, long max)
 {
 
     struct private *priv = calloc(1, sizeof(*priv));
@@ -204,19 +198,15 @@ from_conf(const struct yml_node *node, struct particle *common)
     struct particle *parts[count];
 
     size_t idx = 0;
-    for (struct yml_list_iter it = yml_list_iter(items);
-         it.node != NULL;
-         yml_list_next(&it), idx++)
-    {
-        parts[idx] = conf_to_particle(
-            it.node, (struct conf_inherit){common->font, common->font_shaping, common->foreground});
+    for (struct yml_list_iter it = yml_list_iter(items); it.node != NULL; yml_list_next(&it), idx++) {
+        parts[idx]
+            = conf_to_particle(it.node, (struct conf_inherit){common->font, common->font_shaping, common->foreground});
     }
 
     long min_v = min != NULL ? yml_value_as_int(min) : 0;
     long max_v = max != NULL ? yml_value_as_int(max) : 0;
 
-    return ramp_new(common, yml_value_as_string(tag), parts, count, min != NULL,
-                    min_v, max != NULL, max_v);
+    return ramp_new(common, yml_value_as_string(tag), parts, count, min != NULL, min_v, max != NULL, max_v);
 }
 
 static bool

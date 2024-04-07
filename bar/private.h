@@ -3,7 +3,8 @@
 #include "../bar/bar.h"
 #include "backend.h"
 
-struct private {
+struct private
+{
     /* From bar_config */
     char *monitor;
     enum bar_layer layer;

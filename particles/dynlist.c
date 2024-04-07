@@ -1,13 +1,14 @@
 #include "dynlist.h"
 
-#include <stdlib.h>
 #include <assert.h>
+#include <stdlib.h>
 
 #define LOG_MODULE "dynlist"
 #include "../log.h"
 #include "../particle.h"
 
-struct private {
+struct private
+{
     int left_spacing;
     int right_spacing;
 
@@ -77,8 +78,7 @@ dynlist_expose(const struct exposable *exposable, pixman_image_t *pix, int x, in
 }
 
 static void
-on_mouse(struct exposable *exposable, struct bar *bar,
-         enum mouse_event event, enum mouse_button btn, int x, int y)
+on_mouse(struct exposable *exposable, struct bar *bar, enum mouse_event event, enum mouse_button btn, int x, int y)
 {
     const struct private *e = exposable->private;
 
@@ -87,12 +87,11 @@ on_mouse(struct exposable *exposable, struct bar *bar,
         return;
     }
 
-    int px = /*p->left_margin;*/0;
+    int px = /*p->left_margin;*/ 0;
     for (size_t i = 0; i < e->count; i++) {
         if (x >= px && x < px + e->exposables[i]->width) {
             if (e->exposables[i]->on_mouse != NULL) {
-                e->exposables[i]->on_mouse(
-                    e->exposables[i], bar, event, btn, x - px, y);
+                e->exposables[i]->on_mouse(e->exposables[i], bar, event, btn, x - px, y);
             }
             return;
         }
@@ -105,8 +104,7 @@ on_mouse(struct exposable *exposable, struct bar *bar,
 }
 
 struct exposable *
-dynlist_exposable_new(struct exposable **exposables, size_t count,
-                      int left_spacing, int right_spacing)
+dynlist_exposable_new(struct exposable **exposables, size_t count, int left_spacing, int right_spacing)
 {
     struct private *e = calloc(1, sizeof(*e));
     e->count = count;

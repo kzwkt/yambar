@@ -1,21 +1,22 @@
+#include <assert.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <assert.h>
-#include <errno.h>
 
 #include <poll.h>
 #include <sys/time.h>
 
 #define LOG_MODULE "clock"
 #define LOG_ENABLE_DBG 0
-#include "../log.h"
 #include "../bar/bar.h"
-#include "../config.h"
 #include "../config-verify.h"
+#include "../config.h"
+#include "../log.h"
 #include "../plugin.h"
 
-struct private {
+struct private
+{
     struct particle *label;
     enum {
         UPDATE_GRANULARITY_SECONDS,
@@ -57,8 +58,7 @@ content(struct module *mod)
     strftime(time_str, sizeof(time_str), m->time_format, tm);
 
     struct tag_set tags = {
-        .tags = (struct tag *[]){tag_new_string(mod, "time", time_str),
-                                 tag_new_string(mod, "date", date_str)},
+        .tags = (struct tag *[]){tag_new_string(mod, "time", time_str), tag_new_string(mod, "date", date_str)},
         .count = 2,
     };
 
@@ -90,15 +90,12 @@ run(struct module *mod)
 
         switch (m->update_granularity) {
         case UPDATE_GRANULARITY_SECONDS: {
-            const struct timeval next_second = {
-                .tv_sec = now.tv_sec + 1,
-                .tv_usec = 0};
+            const struct timeval next_second = {.tv_sec = now.tv_sec + 1, .tv_usec = 0};
 
             struct timeval _timeout;
             timersub(&next_second, &now, &_timeout);
 
-            assert(_timeout.tv_sec == 0 ||
-                   (_timeout.tv_sec == 1 && _timeout.tv_usec == 0));
+            assert(_timeout.tv_sec == 0 || (_timeout.tv_sec == 1 && _timeout.tv_usec == 0));
             timeout_ms = _timeout.tv_usec / 1000;
             break;
         }
@@ -118,8 +115,7 @@ run(struct module *mod)
         /* Add 1ms to account for rounding errors */
         timeout_ms++;
 
-        LOG_DBG("now: %lds %ldµs -> timeout: %dms",
-                now.tv_sec, now.tv_usec, timeout_ms);
+        LOG_DBG("now: %lds %ldµs -> timeout: %dms", now.tv_sec, now.tv_usec, timeout_ms);
 
         struct pollfd fds[] = {{.fd = mod->abort_fd, .events = POLLIN}};
         if (poll(fds, 1, timeout_ms) < 0) {
@@ -142,8 +138,7 @@ run(struct module *mod)
 }
 
 static struct module *
-clock_new(struct particle *label, const char *date_format,
-          const char *time_format, bool utc)
+clock_new(struct particle *label, const char *date_format, const char *time_format, bool utc)
 {
     struct private *m = calloc(1, sizeof(*m));
     m->label = label;
@@ -152,20 +147,12 @@ clock_new(struct particle *label, const char *date_format,
     m->utc = utc;
 
     static const char *const seconds_formatters[] = {
-        "%c",
-        "%s",
-        "%S",
-        "%T",
-        "%r",
-        "%X",
+        "%c", "%s", "%S", "%T", "%r", "%X",
     };
 
     m->update_granularity = UPDATE_GRANULARITY_MINUTES;
 
-    for (size_t i = 0;
-         i < sizeof(seconds_formatters) / sizeof(seconds_formatters[0]);
-         i++)
-    {
+    for (size_t i = 0; i < sizeof(seconds_formatters) / sizeof(seconds_formatters[0]); i++) {
         if (strstr(time_format, seconds_formatters[i]) != NULL) {
             m->update_granularity = UPDATE_GRANULARITY_SECONDS;
             break;
@@ -173,8 +160,7 @@ clock_new(struct particle *label, const char *date_format,
     }
 
     LOG_DBG("using %s update granularity",
-            (m->update_granularity == UPDATE_GRANULARITY_MINUTES
-             ? "minutes" : "seconds"));
+            (m->update_granularity == UPDATE_GRANULARITY_MINUTES ? "minutes" : "seconds"));
 
     struct module *mod = module_common_new();
     mod->private = m;
@@ -193,11 +179,9 @@ from_conf(const struct yml_node *node, struct conf_inherit inherited)
     const struct yml_node *time_format = yml_get_value(node, "time-format");
     const struct yml_node *utc = yml_get_value(node, "utc");
 
-    return clock_new(
-        conf_to_particle(c, inherited),
-        date_format != NULL ? yml_value_as_string(date_format) : "%x",
-        time_format != NULL ? yml_value_as_string(time_format) : "%H:%M",
-        utc != NULL ? yml_value_as_bool(utc) : false);
+    return clock_new(conf_to_particle(c, inherited), date_format != NULL ? yml_value_as_string(date_format) : "%x",
+                     time_format != NULL ? yml_value_as_string(time_format) : "%H:%M",
+                     utc != NULL ? yml_value_as_bool(utc) : false);
 }
 
 static bool

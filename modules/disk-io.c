@@ -1,9 +1,9 @@
+#include <dirent.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <poll.h>
 #include <stdbool.h>
 #include <string.h>
-#include <dirent.h>
 
 #include <tllist.h>
 
@@ -34,7 +34,8 @@ struct device_stats {
     bool exists;
 };
 
-struct private {
+struct private
+{
     struct particle *label;
     uint16_t interval;
     tll(struct device_stats *) devices;
@@ -63,7 +64,7 @@ is_disk(char const *name)
     return found;
 }
 
-static struct device_stats*
+static struct device_stats *
 new_device_stats(char const *name)
 {
     struct device_stats *dev = malloc(sizeof(*dev));
@@ -84,9 +85,7 @@ destroy(struct module *mod)
 {
     struct private *m = mod->private;
     m->label->destroy(m->label);
-    tll_foreach(m->devices, it) {
-        free_device_stats(it->item);
-    }
+    tll_foreach(m->devices, it) { free_device_stats(it->item); }
     tll_free(m->devices);
     free(m);
     module_default_destroy(mod);
@@ -126,9 +125,7 @@ refresh_device_stats(struct private *m)
      * The 'exists' variable is what keep tracks of whether or not /proc/diskstats
      * is still reporting the device (i.e., it is still connected).
      */
-    tll_foreach(m->devices, it) {
-        it->item->exists = false;
-    }
+    tll_foreach(m->devices, it) { it->item->exists = false; }
 
     while ((read = getline(&line, &len, fp)) != -1) {
         /*
@@ -156,25 +153,23 @@ refresh_device_stats(struct private *m)
         uint32_t completed_flushes = 0;
         uint32_t flushing_time = 0;
         if (!sscanf(line,
-                " %" SCNu8 " %" SCNu8 " %ms %" SCNu32 " %" SCNu32 " %" SCNu64 " %" SCNu32
-                " %" SCNu32 " %" SCNu32 " %" SCNu64 " %" SCNu32 " %" SCNu32 " %" SCNu32
-                " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32
-                " %" SCNu32,
-                &major_number, &minor_number, &device_name, &completed_reads,
-                &merged_reads, &sectors_read, &reading_time, &completed_writes,
-                &merged_writes, &sectors_written, &writting_time, &ios_in_progress,
-                &io_time, &io_weighted_time, &completed_discards, &merged_discards,
-                &sectors_discarded, &discarding_time, &completed_flushes, &flushing_time))
-        {
+                    " %" SCNu8 " %" SCNu8 " %ms %" SCNu32 " %" SCNu32 " %" SCNu64 " %" SCNu32 " %" SCNu32 " %" SCNu32
+                    " %" SCNu64 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32
+                    " %" SCNu32 " %" SCNu32 " %" SCNu32,
+                    &major_number, &minor_number, &device_name, &completed_reads, &merged_reads, &sectors_read,
+                    &reading_time, &completed_writes, &merged_writes, &sectors_written, &writting_time,
+                    &ios_in_progress, &io_time, &io_weighted_time, &completed_discards, &merged_discards,
+                    &sectors_discarded, &discarding_time, &completed_flushes, &flushing_time)) {
             LOG_ERR("unable to parse /proc/diskstats line");
             free(device_name);
             goto exit;
         }
 
         bool found = false;
-        tll_foreach(m->devices, it) {
+        tll_foreach(m->devices, it)
+        {
             struct device_stats *dev = it->item;
-            if (strcmp(dev->name, device_name) == 0){
+            if (strcmp(dev->name, device_name) == 0) {
                 dev->prev_sectors_read = dev->cur_sectors_read;
                 dev->prev_sectors_written = dev->cur_sectors_written;
                 dev->ios_in_progress = ios_in_progress;
@@ -200,8 +195,9 @@ refresh_device_stats(struct private *m)
         free(device_name);
     }
 
-    tll_foreach(m->devices, it) {
-        if (!it->item->exists){
+    tll_foreach(m->devices, it)
+    {
+        if (!it->item->exists) {
             free_device_stats(it->item);
             tll_remove(m->devices, it);
         }
@@ -221,12 +217,13 @@ content(struct module *mod)
     mtx_lock(&mod->lock);
     struct exposable *tag_parts[p->devices.length + 1];
     int i = 0;
-    tll_foreach(p->devices, it) {
+    tll_foreach(p->devices, it)
+    {
         struct device_stats *dev = it->item;
         uint64_t bytes_read = (dev->cur_sectors_read - dev->prev_sectors_read) * 512;
         uint64_t bytes_written = (dev->cur_sectors_written - dev->prev_sectors_written) * 512;
 
-        if (dev->is_disk){
+        if (dev->is_disk) {
             total_bytes_read += bytes_read;
             total_bytes_written += bytes_written;
             total_ios_in_progress += dev->ios_in_progress;
@@ -314,9 +311,8 @@ from_conf(const struct yml_node *node, struct conf_inherit inherited)
     const struct yml_node *interval = yml_get_value(node, "poll-interval");
     const struct yml_node *c = yml_get_value(node, "content");
 
-    return disk_io_new(
-            interval == NULL ? min_poll_interval : yml_value_as_int(interval),
-            conf_to_particle(c, inherited));
+    return disk_io_new(interval == NULL ? min_poll_interval : yml_value_as_int(interval),
+                       conf_to_particle(c, inherited));
 }
 
 static bool
@@ -326,9 +322,7 @@ conf_verify_poll_interval(keychain_t *chain, const struct yml_node *node)
         return false;
 
     if (yml_value_as_int(node) < min_poll_interval) {
-        LOG_ERR(
-            "%s: poll-interval value cannot be less than %ldms",
-            conf_err_prefix(chain, node), min_poll_interval);
+        LOG_ERR("%s: poll-interval value cannot be less than %ldms", conf_err_prefix(chain, node), min_poll_interval);
         return false;
     }
 

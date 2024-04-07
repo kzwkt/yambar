@@ -1,15 +1,15 @@
 #include "char32.h"
 
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 #include <wchar.h>
 
 #if defined __has_include
- #if __has_include (<stdc-predef.h>)
-   #include <stdc-predef.h>
- #endif
+#if __has_include(<stdc-predef.h>)
+#include <stdc-predef.h>
+#endif
 #endif
 
 #define LOG_MODULE "char32"
@@ -24,14 +24,13 @@
  *  - both use the same encoding (though we require that encoding to be UTF-32)
  */
 
-_Static_assert(
-    sizeof(wchar_t) == sizeof(char32_t), "wchar_t vs. char32_t size mismatch");
+_Static_assert(sizeof(wchar_t) == sizeof(char32_t), "wchar_t vs. char32_t size mismatch");
 
 #if !defined(__STDC_UTF_32__) || !__STDC_UTF_32__
- #error "char32_t does not use UTF-32"
+#error "char32_t does not use UTF-32"
 #endif
 #if (!defined(__STDC_ISO_10646__) || !__STDC_ISO_10646__) && !defined(__FreeBSD__)
- #error "wchar_t does not use UTF-32"
+#error "wchar_t does not use UTF-32"
 #endif
 
 size_t

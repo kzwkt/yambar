@@ -1,25 +1,26 @@
+#include <assert.h>
+#include <errno.h>
+#include <math.h>
+#include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <assert.h>
 #include <unistd.h>
-#include <errno.h>
-#include <poll.h>
 
-#include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 
 #include <libudev.h>
 
 #define LOG_MODULE "backlight"
-#include "../log.h"
 #include "../bar/bar.h"
-#include "../config.h"
 #include "../config-verify.h"
+#include "../config.h"
+#include "../log.h"
 #include "../plugin.h"
 
-struct private {
+struct private
+{
     struct particle *label;
 
     char *device;
@@ -145,8 +146,7 @@ initialize(struct private *m)
 
     m->current_brightness = readint_from_fd(current_fd);
 
-    LOG_INFO("%s: brightness: %ld (max: %ld)", m->device, m->current_brightness,
-             m->max_brightness);
+    LOG_INFO("%s: brightness: %ld (max: %ld)", m->device, m->current_brightness, m->max_brightness);
 
     return current_fd;
 }
@@ -244,8 +244,7 @@ from_conf(const struct yml_node *node, struct conf_inherit inherited)
     const struct yml_node *name = yml_get_value(node, "name");
     const struct yml_node *c = yml_get_value(node, "content");
 
-    return backlight_new(
-        yml_value_as_string(name), conf_to_particle(c, inherited));
+    return backlight_new(yml_value_as_string(name), conf_to_particle(c, inherited));
 }
 
 static bool

@@ -249,13 +249,16 @@ process_line(char *line, struct module *module)
                     assert(false); /* unreachable */
                     break;
                 case LINE_MODE_FULLSCREEN:
-                    private->fullscreen = (strcmp(string, "0") != 0);
+                    private
+                    ->fullscreen = (strcmp(string, "0") != 0);
                     break;
                 case LINE_MODE_FLOATING:
-                    private->floating = (strcmp(string, "0") != 0);
+                    private
+                    ->floating = (strcmp(string, "0") != 0);
                     break;
                 case LINE_MODE_SELMON:
-                    private->selmon = (strcmp(string, "0") != 0);
+                    private
+                    ->selmon = (strcmp(string, "0") != 0);
                     break;
                 case LINE_MODE_LAYOUT:
                     free(private->layout);
@@ -438,8 +441,7 @@ run(struct module *module)
 }
 
 static struct module *
-dwl_new(struct particle *label, int number_of_tags,
-        struct yml_node const *name_of_tags, char const *dwl_info_filename)
+dwl_new(struct particle *label, int number_of_tags, struct yml_node const *name_of_tags, char const *dwl_info_filename)
 {
     struct private *private = calloc(1, sizeof(struct private));
     private->label = label;
@@ -480,8 +482,8 @@ from_conf(struct yml_node const *node, struct conf_inherit inherited)
     struct yml_node const *name_of_tags = yml_get_value(node, "name-of-tags");
     struct yml_node const *dwl_info_filename = yml_get_value(node, "dwl-info-filename");
 
-    return dwl_new(conf_to_particle(content, inherited), yml_value_as_int(number_of_tags),
-                   name_of_tags, yml_value_as_string(dwl_info_filename));
+    return dwl_new(conf_to_particle(content, inherited), yml_value_as_int(number_of_tags), name_of_tags,
+                   yml_value_as_string(dwl_info_filename));
 }
 
 static bool

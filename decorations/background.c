@@ -1,12 +1,13 @@
 #include <stdlib.h>
 
-#include "../config.h"
 #include "../config-verify.h"
+#include "../config.h"
 #include "../decoration.h"
 #include "../plugin.h"
 
-struct private {
-    //struct rgba color;
+struct private
+{
+    // struct rgba color;
     pixman_color_t color;
 };
 
@@ -22,9 +23,7 @@ static void
 expose(const struct deco *deco, pixman_image_t *pix, int x, int y, int width, int height)
 {
     const struct private *d = deco->private;
-    pixman_image_fill_rectangles(
-        PIXMAN_OP_OVER, pix, &d->color, 1,
-        &(pixman_rectangle16_t){x, y, width, height});
+    pixman_image_fill_rectangles(PIXMAN_OP_OVER, pix, &d->color, 1, &(pixman_rectangle16_t){x, y, width, height});
 }
 
 static struct deco *

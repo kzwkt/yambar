@@ -1,15 +1,14 @@
 #include <stdlib.h>
 
-#include "../config.h"
 #include "../config-verify.h"
+#include "../config.h"
 #include "../particle.h"
 #include "../plugin.h"
 
 static int
 begin_expose(struct exposable *exposable)
 {
-    exposable->width = exposable->particle->left_margin +
-        exposable->particle->right_margin;
+    exposable->width = exposable->particle->left_margin + exposable->particle->right_margin;
     return exposable->width;
 }
 

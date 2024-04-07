@@ -2,8 +2,8 @@
 
 #include <stdbool.h>
 
-#include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <sys/un.h>
 
 #include <json-c/json_util.h>
@@ -43,6 +43,4 @@ struct i3_ipc_callbacks {
     i3_ipc_callback_t event_input;
 };
 
-bool i3_receive_loop(
-    int abort_fd, int sock,
-    const struct i3_ipc_callbacks *callbacks, void *data);
+bool i3_receive_loop(int abort_fd, int sock, const struct i3_ipc_callbacks *callbacks, void *data);

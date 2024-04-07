@@ -1,16 +1,16 @@
 #include "xcb.h"
 
-#include <string.h>
 #include <assert.h>
+#include <string.h>
 
-#include <unistd.h>
 #include <poll.h>
 #include <pthread.h>
+#include <unistd.h>
 
 #include <pixman.h>
-#include <xcb/xcb.h>
 #include <xcb/randr.h>
 #include <xcb/render.h>
+#include <xcb/xcb.h>
 #include <xcb/xcb_aux.h>
 #include <xcb/xcb_cursor.h>
 #include <xcb/xcb_event.h>
@@ -39,7 +39,6 @@ struct xcb_backend {
     void *client_pixmap;
     size_t client_pixmap_size;
     pixman_image_t *pix;
-
 };
 
 void *
@@ -55,11 +54,8 @@ setup(struct bar *_bar)
     struct private *bar = _bar->private;
     struct xcb_backend *backend = bar->backend.data;
 
-    if (bar->border.left_margin != 0 ||
-        bar->border.right_margin != 0 ||
-        bar->border.top_margin != 0 ||
-        bar->border.bottom_margin)
-    {
+    if (bar->border.left_margin != 0 || bar->border.right_margin != 0 || bar->border.top_margin != 0
+        || bar->border.bottom_margin) {
         LOG_WARN("non-zero border margins ignored in X11 backend");
     }
 
@@ -76,10 +72,8 @@ setup(struct bar *_bar)
 
     xcb_screen_t *screen = xcb_aux_get_screen(backend->conn, default_screen);
 
-    xcb_randr_get_monitors_reply_t *monitors = xcb_randr_get_monitors_reply(
-        backend->conn,
-        xcb_randr_get_monitors(backend->conn, screen->root, 0),
-        &e);
+    xcb_randr_get_monitors_reply_t *monitors
+        = xcb_randr_get_monitors_reply(backend->conn, xcb_randr_get_monitors(backend->conn, screen->root, 0), &e);
 
     if (e != NULL) {
         LOG_ERR("failed to get monitor list: %s", xcb_error(e));
@@ -90,17 +84,13 @@ setup(struct bar *_bar)
 
     /* Find monitor coordinates and width/height */
     bool found_monitor = false;
-    for (xcb_randr_monitor_info_iterator_t it =
-             xcb_randr_get_monitors_monitors_iterator(monitors);
-         it.rem > 0;
-         xcb_randr_monitor_info_next(&it))
-    {
+    for (xcb_randr_monitor_info_iterator_t it = xcb_randr_get_monitors_monitors_iterator(monitors); it.rem > 0;
+         xcb_randr_monitor_info_next(&it)) {
         const xcb_randr_monitor_info_t *mon = it.data;
         char *name = get_atom_name(backend->conn, mon->name);
 
-        LOG_INFO("monitor: %s: %ux%u+%u+%u (%ux%umm)", name,
-               mon->width, mon->height, mon->x, mon->y,
-               mon->width_in_millimeters, mon->height_in_millimeters);
+        LOG_INFO("monitor: %s: %ux%u+%u+%u (%ux%umm)", name, mon->width, mon->height, mon->x, mon->y,
+                 mon->width_in_millimeters, mon->height_in_millimeters);
 
         /* User wants a specific monitor, and this is not the one */
         if (bar->monitor != NULL && strcmp(bar->monitor, name) != 0) {
@@ -111,14 +101,11 @@ setup(struct bar *_bar)
         backend->x = mon->x;
         backend->y = mon->y;
         bar->width = mon->width;
-        backend->y += bar->location == BAR_TOP ? 0
-            : screen->height_in_pixels - bar->height_with_border;
+        backend->y += bar->location == BAR_TOP ? 0 : screen->height_in_pixels - bar->height_with_border;
 
         found_monitor = true;
 
-        if ((bar->monitor != NULL && strcmp(bar->monitor, name) == 0) ||
-            (bar->monitor == NULL && mon->primary))
-        {
+        if ((bar->monitor != NULL && strcmp(bar->monitor, name) == 0) || (bar->monitor == NULL && mon->primary)) {
             /* Exact match */
             free(name);
             break;
@@ -155,61 +142,34 @@ setup(struct bar *_bar)
     LOG_DBG("using a %hhu-bit visual", depth);
 
     backend->colormap = xcb_generate_id(backend->conn);
-    xcb_create_colormap(
-        backend->conn, 0, backend->colormap, screen->root, vis->visual_id);
+    xcb_create_colormap(backend->conn, 0, backend->colormap, screen->root, vis->visual_id);
 
     backend->win = xcb_generate_id(backend->conn);
     xcb_create_window(
-        backend->conn,
-        depth, backend->win, screen->root,
-        backend->x, backend->y, bar->width, bar->height_with_border,
-        0,
-        XCB_WINDOW_CLASS_INPUT_OUTPUT, vis->visual_id,
-        (XCB_CW_BACK_PIXEL |
-         XCB_CW_BORDER_PIXEL |
-         XCB_CW_EVENT_MASK |
-         XCB_CW_COLORMAP),
-        (const uint32_t []){
-            screen->black_pixel,
-            screen->white_pixel,
-            (XCB_EVENT_MASK_EXPOSURE |
-             XCB_EVENT_MASK_BUTTON_RELEASE |
-             XCB_EVENT_MASK_BUTTON_PRESS |
-             XCB_EVENT_MASK_POINTER_MOTION |
-             XCB_EVENT_MASK_STRUCTURE_NOTIFY),
-            backend->colormap}
-        );
+        backend->conn, depth, backend->win, screen->root, backend->x, backend->y, bar->width, bar->height_with_border,
+        0, XCB_WINDOW_CLASS_INPUT_OUTPUT, vis->visual_id,
+        (XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL | XCB_CW_EVENT_MASK | XCB_CW_COLORMAP),
+        (const uint32_t[]){screen->black_pixel, screen->white_pixel,
+                           (XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS
+                            | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_STRUCTURE_NOTIFY),
+                           backend->colormap});
 
     const char *title = "yambar";
-    xcb_change_property(
-        backend->conn,
-        XCB_PROP_MODE_REPLACE, backend->win,
-        XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8,
-        strlen(title), title);
+    xcb_change_property(backend->conn, XCB_PROP_MODE_REPLACE, backend->win, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8,
+                        strlen(title), title);
 
-    xcb_change_property(
-        backend->conn,
-        XCB_PROP_MODE_REPLACE, backend->win,
-        _NET_WM_PID, XCB_ATOM_CARDINAL, 32, 1, (const uint32_t []){getpid()});
-    xcb_change_property(
-        backend->conn,
-        XCB_PROP_MODE_REPLACE, backend->win,
-        _NET_WM_WINDOW_TYPE, XCB_ATOM_ATOM, 32,
-        1, (const uint32_t []){_NET_WM_WINDOW_TYPE_DOCK});
-    xcb_change_property(
-        backend->conn,
-        XCB_PROP_MODE_REPLACE, backend->win,
-        _NET_WM_STATE, XCB_ATOM_ATOM, 32,
-        2, (const uint32_t []){_NET_WM_STATE_ABOVE, _NET_WM_STATE_STICKY});
-    xcb_change_property(
-        backend->conn,
-        XCB_PROP_MODE_REPLACE, backend->win,
-        _NET_WM_DESKTOP, XCB_ATOM_CARDINAL, 32, 1, (const uint32_t []){0xffffffff});
+    xcb_change_property(backend->conn, XCB_PROP_MODE_REPLACE, backend->win, _NET_WM_PID, XCB_ATOM_CARDINAL, 32, 1,
+                        (const uint32_t[]){getpid()});
+    xcb_change_property(backend->conn, XCB_PROP_MODE_REPLACE, backend->win, _NET_WM_WINDOW_TYPE, XCB_ATOM_ATOM, 32, 1,
+                        (const uint32_t[]){_NET_WM_WINDOW_TYPE_DOCK});
+    xcb_change_property(backend->conn, XCB_PROP_MODE_REPLACE, backend->win, _NET_WM_STATE, XCB_ATOM_ATOM, 32, 2,
+                        (const uint32_t[]){_NET_WM_STATE_ABOVE, _NET_WM_STATE_STICKY});
+    xcb_change_property(backend->conn, XCB_PROP_MODE_REPLACE, backend->win, _NET_WM_DESKTOP, XCB_ATOM_CARDINAL, 32, 1,
+                        (const uint32_t[]){0xffffffff});
 
     /* Always on top */
-    xcb_configure_window(
-        backend->conn, backend->win, XCB_CONFIG_WINDOW_STACK_MODE,
-        (const uint32_t []){XCB_STACK_MODE_ABOVE});
+    xcb_configure_window(backend->conn, backend->win, XCB_CONFIG_WINDOW_STACK_MODE,
+                         (const uint32_t[]){XCB_STACK_MODE_ABOVE});
 
     uint32_t top_strut, bottom_strut;
     uint32_t top_pair[2], bottom_pair[2];
@@ -232,42 +192,38 @@ setup(struct bar *_bar)
 
     uint32_t strut[] = {
         /* left/right/top/bottom */
-        0, 0,
+        0,
+        0,
         top_strut,
         bottom_strut,
 
         /* start/end pairs for left/right/top/bottom */
-        0, 0,
-        0, 0,
-        top_pair[0], top_pair[1],
-        bottom_pair[0], bottom_pair[1],
+        0,
+        0,
+        0,
+        0,
+        top_pair[0],
+        top_pair[1],
+        bottom_pair[0],
+        bottom_pair[1],
     };
 
-    xcb_change_property(
-        backend->conn,
-        XCB_PROP_MODE_REPLACE, backend->win,
-        _NET_WM_STRUT, XCB_ATOM_CARDINAL, 32,
-        4, strut);
+    xcb_change_property(backend->conn, XCB_PROP_MODE_REPLACE, backend->win, _NET_WM_STRUT, XCB_ATOM_CARDINAL, 32, 4,
+                        strut);
 
-    xcb_change_property(
-        backend->conn,
-        XCB_PROP_MODE_REPLACE, backend->win,
-        _NET_WM_STRUT_PARTIAL, XCB_ATOM_CARDINAL, 32,
-        12, strut);
+    xcb_change_property(backend->conn, XCB_PROP_MODE_REPLACE, backend->win, _NET_WM_STRUT_PARTIAL, XCB_ATOM_CARDINAL,
+                        32, 12, strut);
 
     backend->gc = xcb_generate_id(backend->conn);
-    xcb_create_gc(backend->conn, backend->gc, backend->win,
-                  XCB_GC_FOREGROUND | XCB_GC_GRAPHICS_EXPOSURES,
-                  (const uint32_t []){screen->white_pixel, 0});
+    xcb_create_gc(backend->conn, backend->gc, backend->win, XCB_GC_FOREGROUND | XCB_GC_GRAPHICS_EXPOSURES,
+                  (const uint32_t[]){screen->white_pixel, 0});
 
-    const uint32_t stride = stride_for_format_and_width(
-        PIXMAN_a8r8g8b8, bar->width);
+    const uint32_t stride = stride_for_format_and_width(PIXMAN_a8r8g8b8, bar->width);
 
     backend->client_pixmap_size = stride * bar->height_with_border;
     backend->client_pixmap = malloc(backend->client_pixmap_size);
-    backend->pix = pixman_image_create_bits_no_clear(
-        PIXMAN_a8r8g8b8, bar->width, bar->height_with_border,
-        (uint32_t *)backend->client_pixmap, stride);
+    backend->pix = pixman_image_create_bits_no_clear(PIXMAN_a8r8g8b8, bar->width, bar->height_with_border,
+                                                     (uint32_t *)backend->client_pixmap, stride);
     bar->pix = backend->pix;
 
     xcb_map_window(backend->conn, backend->win);
@@ -310,10 +266,8 @@ cleanup(struct bar *_bar)
 }
 
 static void
-loop(struct bar *_bar,
-     void (*expose)(const struct bar *bar),
-     void (*on_mouse)(struct bar *bar, enum mouse_event event,
-                      enum mouse_button btn, int x, int y))
+loop(struct bar *_bar, void (*expose)(const struct bar *bar),
+     void (*on_mouse)(struct bar *bar, enum mouse_event event, enum mouse_button btn, int x, int y))
 {
     struct private *bar = _bar->private;
     struct xcb_backend *backend = bar->backend.data;
@@ -323,10 +277,7 @@ loop(struct bar *_bar,
     const int fd = xcb_get_file_descriptor(backend->conn);
 
     while (true) {
-        struct pollfd fds[] = {
-            {.fd = _bar->abort_fd, .events = POLLIN},
-            {.fd = fd, .events = POLLIN}
-        };
+        struct pollfd fds[] = {{.fd = _bar->abort_fd, .events = POLLIN}, {.fd = fd, .events = POLLIN}};
 
         poll(fds, sizeof(fds) / sizeof(fds[0]), -1);
 
@@ -335,18 +286,14 @@ loop(struct bar *_bar,
 
         if (fds[1].revents & POLLHUP) {
             LOG_WARN("disconnected from XCB");
-            if (write(_bar->abort_fd, &(uint64_t){1}, sizeof(uint64_t))
-                != sizeof(uint64_t))
-            {
+            if (write(_bar->abort_fd, &(uint64_t){1}, sizeof(uint64_t)) != sizeof(uint64_t)) {
                 LOG_ERRNO("failed to signal abort to modules");
             }
             break;
         }
 
-        for (xcb_generic_event_t *e = xcb_wait_for_event(backend->conn);
-             e != NULL;
-             e = xcb_poll_for_event(backend->conn))
-        {
+        for (xcb_generic_event_t *e = xcb_wait_for_event(backend->conn); e != NULL;
+             e = xcb_poll_for_event(backend->conn)) {
             switch (XCB_EVENT_RESPONSE_TYPE(e)) {
             case 0:
                 LOG_ERR("XCB: %s", xcb_error((const xcb_generic_error_t *)e));
@@ -369,9 +316,12 @@ loop(struct bar *_bar,
                 const xcb_button_release_event_t *evt = (void *)e;
 
                 switch (evt->detail) {
-                case 1: case 2: case 3: case 4: case 5:
-                    on_mouse(_bar, ON_MOUSE_CLICK,
-                             evt->detail, evt->event_x, evt->event_y);
+                case 1:
+                case 2:
+                case 3:
+                case 4:
+                case 5:
+                    on_mouse(_bar, ON_MOUSE_CLICK, evt->detail, evt->event_x, evt->event_y);
                     break;
                 }
                 break;
@@ -405,10 +355,9 @@ commit(const struct bar *_bar)
     const struct private *bar = _bar->private;
     const struct xcb_backend *backend = bar->backend.data;
 
-    xcb_put_image(
-        backend->conn, XCB_IMAGE_FORMAT_Z_PIXMAP, backend->win, backend->gc,
-        bar->width, bar->height_with_border, 0, 0, 0,
-        backend->depth, backend->client_pixmap_size, backend->client_pixmap);
+    xcb_put_image(backend->conn, XCB_IMAGE_FORMAT_Z_PIXMAP, backend->win, backend->gc, bar->width,
+                  bar->height_with_border, 0, 0, 0, backend->depth, backend->client_pixmap_size,
+                  backend->client_pixmap);
     xcb_flush(backend->conn);
 }
 
@@ -424,19 +373,15 @@ refresh(const struct bar *_bar)
      * the size of the event structure */
     xcb_expose_event_t *evt = calloc(32, 1);
 
-    *evt = (xcb_expose_event_t){
-        .response_type = XCB_EXPOSE,
-        .window = backend->win,
-        .x = 0,
-        .y = 0,
-        .width = bar->width,
-        .height = bar->height,
-        .count = 1
-    };
+    *evt = (xcb_expose_event_t){.response_type = XCB_EXPOSE,
+                                .window = backend->win,
+                                .x = 0,
+                                .y = 0,
+                                .width = bar->width,
+                                .height = bar->height,
+                                .count = 1};
 
-    xcb_send_event(
-        backend->conn, false, backend->win, XCB_EVENT_MASK_EXPOSURE,
-        (char *)evt);
+    xcb_send_event(backend->conn, false, backend->win, XCB_EVENT_MASK_EXPOSURE, (char *)evt);
 
     xcb_flush(backend->conn);
     free(evt);
@@ -458,8 +403,7 @@ set_cursor(struct bar *_bar, const char *cursor)
         xcb_free_cursor(backend->conn, backend->cursor);
 
     backend->cursor = xcb_cursor_load_cursor(backend->cursor_ctx, cursor);
-    xcb_change_window_attributes(
-        backend->conn, backend->win, XCB_CW_CURSOR, &backend->cursor);
+    xcb_change_window_attributes(backend->conn, backend->win, XCB_CW_CURSOR, &backend->cursor);
 }
 
 static const char *

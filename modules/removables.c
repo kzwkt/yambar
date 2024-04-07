@@ -1,15 +1,15 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <inttypes.h>
-#include <string.h>
-#include <unistd.h>
 #include <assert.h>
 #include <errno.h>
+#include <inttypes.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
+#include <fcntl.h>
 #include <poll.h>
 #include <sys/stat.h>
-#include <fcntl.h>
 
 #include <libudev.h>
 
@@ -17,10 +17,10 @@
 
 #define LOG_MODULE "removables"
 #define LOG_ENABLE_DBG 0
-#include "../log.h"
 #include "../bar/bar.h"
-#include "../config.h"
 #include "../config-verify.h"
+#include "../config.h"
+#include "../log.h"
 #include "../particles/dynlist.h"
 #include "../plugin.h"
 
@@ -54,7 +54,8 @@ struct block_device {
     tll(struct partition) partitions;
 };
 
-struct private {
+struct private
+{
     struct particle *label;
     int left_spacing;
     int right_spacing;
@@ -75,8 +76,7 @@ free_partition(struct partition *p)
 static void
 free_device(struct block_device *b)
 {
-    tll_foreach(b->partitions, it)
-        free_partition(&it->item);
+    tll_foreach(b->partitions, it) free_partition(&it->item);
     tll_free(b->partitions);
 
     free(b->sys_path);
@@ -91,8 +91,7 @@ destroy(struct module *mod)
     struct private *m = mod->private;
     m->label->destroy(m->label);
 
-    tll_foreach(m->devices, it)
-        free_device(&it->item);
+    tll_foreach(m->devices, it) free_device(&it->item);
     tll_free(m->devices);
     tll_free_and_free(m->ignore, free);
 
@@ -113,24 +112,23 @@ content(struct module *mod)
 
     tll(const struct partition *) partitions = tll_init();
 
-    tll_foreach(m->devices, dev) {
-        tll_foreach(dev->item.partitions, part) {
-            tll_push_back(partitions, &part->item);
-        }
+    tll_foreach(m->devices, dev)
+    {
+        tll_foreach(dev->item.partitions, part) { tll_push_back(partitions, &part->item); }
     }
 
     struct exposable *exposables[max(tll_length(partitions), 1)];
     size_t idx = 0;
 
-    tll_foreach(partitions, it) {
+    tll_foreach(partitions, it)
+    {
         const struct partition *p = it->item;
 
         char dummy_label[16];
         const char *label = p->label;
 
         if (label == NULL) {
-            snprintf(dummy_label, sizeof(dummy_label),
-                     "%.1f GB", (double)p->size / 1024 / 1024 / 1024 * 512);
+            snprintf(dummy_label, sizeof(dummy_label), "%.1f GB", (double)p->size / 1024 / 1024 / 1024 * 512);
             label = dummy_label;
         }
 
@@ -157,8 +155,7 @@ content(struct module *mod)
     }
 
     tll_free(partitions);
-    return dynlist_exposable_new(
-        exposables, idx, m->left_spacing, m->right_spacing);
+    return dynlist_exposable_new(exposables, idx, m->left_spacing, m->right_spacing);
 }
 
 static void
@@ -178,9 +175,7 @@ find_mount_points(const char *dev_path, mount_point_list_t *mount_points)
     while (fgets(line, sizeof(line), f) != NULL) {
         char *dev = NULL, *path = NULL;
 
-        if (sscanf(line, "%*u %*u %*u:%*u %*s %ms %*[^-] - %*s %ms %*s",
-                   &path, &dev) != 2)
-        {
+        if (sscanf(line, "%*u %*u %*u:%*u %*s %ms %*[^-] - %*s %ms %*s", &path, &dev) != 2) {
             LOG_ERR("failed to parse /proc/self/mountinfo: %s", line);
             free(dev);
             free(path);
@@ -207,9 +202,11 @@ update_mount_points(struct partition *partition)
 
     /* Remove mount points that no longer exists (i.e. old mount
      * points that aren't in the new list) */
-    tll_foreach(partition->mount_points, old) {
+    tll_foreach(partition->mount_points, old)
+    {
         bool gone = true;
-        tll_foreach(new_mounts, new) {
+        tll_foreach(new_mounts, new)
+        {
             if (strcmp(new->item, old->item) == 0) {
                 /* Remove from new list, as it's already in the
                  * partitions list */
@@ -228,7 +225,8 @@ update_mount_points(struct partition *partition)
 
     /* Add new mount points (i.e. mount points in the new list, that
      * aren't in the old list) */
-    tll_foreach(new_mounts, new) {
+    tll_foreach(new_mounts, new)
+    {
         LOG_DBG("%s: mounted on %s", partition->dev_path, new->item);
         tll_push_back(partition->mount_points, new->item);
 
@@ -242,14 +240,13 @@ update_mount_points(struct partition *partition)
 }
 
 static struct partition *
-add_partition(struct module *mod, struct block_device *block,
-              struct udev_device *dev)
+add_partition(struct module *mod, struct block_device *block, struct udev_device *dev)
 {
     struct private *m = mod->private;
     const char *_size = udev_device_get_sysattr_value(dev, "size");
     uint64_t size = 0;
     if (_size != NULL)
-        sscanf(_size, "%"SCNu64, &size);
+        sscanf(_size, "%" SCNu64, &size);
 
 #if 0
     struct udev_list_entry *e = NULL;
@@ -260,7 +257,8 @@ add_partition(struct module *mod, struct block_device *block,
 
     const char *devname = udev_device_get_property_value(dev, "DEVNAME");
     if (devname != NULL) {
-        tll_foreach(m->ignore, it) {
+        tll_foreach(m->ignore, it)
+        {
             if (strcmp(it->item, devname) == 0) {
                 LOG_DBG("ignoring %s because it is on the ignore list", devname);
                 return NULL;
@@ -272,21 +270,17 @@ add_partition(struct module *mod, struct block_device *block,
     if (label == NULL)
         label = udev_device_get_property_value(dev, "ID_LABEL");
 
-    LOG_INFO("partition: add: %s: label=%s, size=%"PRIu64,
-             udev_device_get_devnode(dev), label, size);
+    LOG_INFO("partition: add: %s: label=%s, size=%" PRIu64, udev_device_get_devnode(dev), label, size);
 
     mtx_lock(&mod->lock);
 
-    tll_push_back(
-        block->partitions,
-        ((struct partition){
-            .block = block,
-            .sys_path = strdup(udev_device_get_devpath(dev)),
-            .dev_path = strdup(udev_device_get_devnode(dev)),
-            .label = label != NULL ? strdup(label) : NULL,
-            .size = size,
-            .audio_cd = false,
-            .mount_points = tll_init()}));
+    tll_push_back(block->partitions, ((struct partition){.block = block,
+                                                         .sys_path = strdup(udev_device_get_devpath(dev)),
+                                                         .dev_path = strdup(udev_device_get_devnode(dev)),
+                                                         .label = label != NULL ? strdup(label) : NULL,
+                                                         .size = size,
+                                                         .audio_cd = false,
+                                                         .mount_points = tll_init()}));
 
     struct partition *p = &tll_back(block->partitions);
     update_mount_points(p);
@@ -296,14 +290,13 @@ add_partition(struct module *mod, struct block_device *block,
 }
 
 static struct partition *
-add_audio_cd(struct module *mod, struct block_device *block,
-             struct udev_device *dev)
+add_audio_cd(struct module *mod, struct block_device *block, struct udev_device *dev)
 {
     struct private *m = mod->private;
     const char *_size = udev_device_get_sysattr_value(dev, "size");
     uint64_t size = 0;
     if (_size != NULL)
-        sscanf(_size, "%"SCNu64, &size);
+        sscanf(_size, "%" SCNu64, &size);
 
 #if 0
     struct udev_list_entry *e = NULL;
@@ -314,7 +307,8 @@ add_audio_cd(struct module *mod, struct block_device *block,
 
     const char *devname = udev_device_get_property_value(dev, "DEVNAME");
     if (devname != NULL) {
-        tll_foreach(m->ignore, it) {
+        tll_foreach(m->ignore, it)
+        {
             if (strcmp(it->item, devname) == 0) {
                 LOG_DBG("ignoring %s because it is on the ignore list", devname);
                 return NULL;
@@ -322,28 +316,24 @@ add_audio_cd(struct module *mod, struct block_device *block,
         }
     }
 
-    const char *_track_count = udev_device_get_property_value(
-        dev, "ID_CDROM_MEDIA_TRACK_COUNT_AUDIO");
+    const char *_track_count = udev_device_get_property_value(dev, "ID_CDROM_MEDIA_TRACK_COUNT_AUDIO");
     unsigned long track_count = strtoul(_track_count, NULL, 10);
 
     char label[64];
     snprintf(label, sizeof(label), "Audio CD - %lu tracks", track_count);
 
-    LOG_INFO("audio CD: add: %s: tracks=%lu, label=%s, size=%"PRIu64,
-             udev_device_get_devnode(dev), track_count, label, size);
+    LOG_INFO("audio CD: add: %s: tracks=%lu, label=%s, size=%" PRIu64, udev_device_get_devnode(dev), track_count, label,
+             size);
 
     mtx_lock(&mod->lock);
 
-    tll_push_back(
-        block->partitions,
-        ((struct partition){
-            .block = block,
-            .sys_path = strdup(udev_device_get_devpath(dev)),
-            .dev_path = strdup(udev_device_get_devnode(dev)),
-            .label = label != NULL ? strdup(label) : NULL,
-            .size = size,
-            .audio_cd = true,
-            .mount_points = tll_init()}));
+    tll_push_back(block->partitions, ((struct partition){.block = block,
+                                                         .sys_path = strdup(udev_device_get_devpath(dev)),
+                                                         .dev_path = strdup(udev_device_get_devnode(dev)),
+                                                         .label = label != NULL ? strdup(label) : NULL,
+                                                         .size = size,
+                                                         .audio_cd = true,
+                                                         .mount_points = tll_init()}));
 
     struct partition *p = &tll_back(block->partitions);
     update_mount_points(p);
@@ -353,17 +343,15 @@ add_audio_cd(struct module *mod, struct block_device *block,
 }
 
 static bool
-del_partition(struct module *mod, struct block_device *block,
-              struct udev_device *dev)
+del_partition(struct module *mod, struct block_device *block, struct udev_device *dev)
 {
     const char *sys_path = udev_device_get_devpath(dev);
     mtx_lock(&mod->lock);
 
-    tll_foreach(block->partitions, it) {
+    tll_foreach(block->partitions, it)
+    {
         if (strcmp(it->item.sys_path, sys_path) == 0) {
-            LOG_INFO("%s: del: %s",
-                     it->item.audio_cd ? "audio CD" : "partition",
-                     it->item.dev_path);
+            LOG_INFO("%s: del: %s", it->item.audio_cd ? "audio CD" : "partition", it->item.dev_path);
 
             free_partition(&it->item);
             tll_remove(block->partitions, it);
@@ -392,7 +380,8 @@ add_device(struct module *mod, struct udev_device *dev)
 
     const char *devname = udev_device_get_property_value(dev, "DEVNAME");
     if (devname != NULL) {
-        tll_foreach(m->ignore, it) {
+        tll_foreach(m->ignore, it)
+        {
             if (strcmp(it->item, devname) == 0) {
                 LOG_DBG("ignoring %s because it is on the ignore list", devname);
                 return NULL;
@@ -403,11 +392,12 @@ add_device(struct module *mod, struct udev_device *dev)
     const char *_size = udev_device_get_sysattr_value(dev, "size");
     uint64_t size = 0;
     if (_size != NULL)
-        sscanf(_size, "%"SCNu64, &size);
+        sscanf(_size, "%" SCNu64, &size);
 
 #if 1
     struct udev_list_entry *e = NULL;
-    udev_list_entry_foreach(e, udev_device_get_properties_list_entry(dev)) {
+    udev_list_entry_foreach(e, udev_device_get_properties_list_entry(dev))
+    {
         LOG_DBG("%s -> %s", udev_list_entry_get_name(e), udev_list_entry_get_value(e));
     }
 #endif
@@ -424,27 +414,22 @@ add_device(struct module *mod, struct udev_device *dev)
     const char *_fs_usage = udev_device_get_property_value(dev, "ID_FS_USAGE");
     bool have_fs = _fs_usage != NULL && strcmp(_fs_usage, "filesystem") == 0;
 
-    const char *_audio_track_count = udev_device_get_property_value(
-        dev, "ID_CDROM_MEDIA_TRACK_COUNT_AUDIO");
-    unsigned long audio_track_count =
-        _audio_track_count != NULL ? strtoul(_audio_track_count, NULL, 10) : 0;
+    const char *_audio_track_count = udev_device_get_property_value(dev, "ID_CDROM_MEDIA_TRACK_COUNT_AUDIO");
+    unsigned long audio_track_count = _audio_track_count != NULL ? strtoul(_audio_track_count, NULL, 10) : 0;
 
-    LOG_DBG("device: add: %s: vendor=%s, model=%s, optical=%d, size=%"PRIu64,
-            udev_device_get_devnode(dev), vendor, model, optical, size);
+    LOG_DBG("device: add: %s: vendor=%s, model=%s, optical=%d, size=%" PRIu64, udev_device_get_devnode(dev), vendor,
+            model, optical, size);
 
     mtx_lock(&mod->lock);
 
-    tll_push_back(
-        m->devices,
-        ((struct block_device){
-            .sys_path = strdup(udev_device_get_devpath(dev)),
-            .dev_path = strdup(udev_device_get_devnode(dev)),
-            .size = size,
-            .vendor = vendor != NULL ? strdup(vendor) : NULL,
-            .model = model != NULL ? strdup(model) : NULL,
-            .optical = optical,
-            .media = media,
-            .partitions = tll_init()}));
+    tll_push_back(m->devices, ((struct block_device){.sys_path = strdup(udev_device_get_devpath(dev)),
+                                                     .dev_path = strdup(udev_device_get_devnode(dev)),
+                                                     .size = size,
+                                                     .vendor = vendor != NULL ? strdup(vendor) : NULL,
+                                                     .model = model != NULL ? strdup(model) : NULL,
+                                                     .optical = optical,
+                                                     .media = media,
+                                                     .partitions = tll_init()}));
 
     mtx_unlock(&mod->lock);
 
@@ -466,7 +451,8 @@ del_device(struct module *mod, struct udev_device *dev)
     const char *sys_path = udev_device_get_devpath(dev);
     mtx_lock(&mod->lock);
 
-    tll_foreach(m->devices, it) {
+    tll_foreach(m->devices, it)
+    {
         if (strcmp(it->item.sys_path, sys_path) == 0) {
             LOG_DBG("device: del: %s", it->item.dev_path);
 
@@ -490,7 +476,8 @@ change_device(struct module *mod, struct udev_device *dev)
 
     struct block_device *block = NULL;
 
-    tll_foreach(m->devices, it) {
+    tll_foreach(m->devices, it)
+    {
         if (strcmp(it->item.sys_path, sys_path) == 0) {
             block = &it->item;
             break;
@@ -511,10 +498,8 @@ change_device(struct module *mod, struct udev_device *dev)
     const char *_fs_usage = udev_device_get_property_value(dev, "ID_FS_USAGE");
     bool have_fs = _fs_usage != NULL && strcmp(_fs_usage, "filesystem") == 0;
 
-    const char *_audio_track_count = udev_device_get_property_value(
-        dev, "ID_CDROM_MEDIA_TRACK_COUNT_AUDIO");
-    unsigned long audio_track_count =
-        _audio_track_count != NULL ? strtoul(_audio_track_count, NULL, 10) : 0;
+    const char *_audio_track_count = udev_device_get_property_value(dev, "ID_CDROM_MEDIA_TRACK_COUNT_AUDIO");
+    unsigned long audio_track_count = _audio_track_count != NULL ? strtoul(_audio_track_count, NULL, 10) : 0;
 
     bool media_change = media != block->media;
 
@@ -522,8 +507,7 @@ change_device(struct module *mod, struct udev_device *dev)
     mtx_unlock(&mod->lock);
 
     if (media_change) {
-        LOG_INFO("device: change: %s: media %s",
-                 block->dev_path, media ? "inserted" : "removed");
+        LOG_INFO("device: change: %s: media %s", block->dev_path, media ? "inserted" : "removed");
 
         if (media) {
             if (have_fs)
@@ -569,7 +553,8 @@ handle_udev_event(struct module *mod, struct udev_device *dev)
         struct udev_device *parent = udev_device_get_parent(dev);
         const char *parent_sys_path = udev_device_get_devpath(parent);
 
-        tll_foreach(m->devices, it) {
+        tll_foreach(m->devices, it)
+        {
             if (strcmp(it->item.sys_path, parent_sys_path) != 0)
                 continue;
 
@@ -578,8 +563,7 @@ handle_udev_event(struct module *mod, struct udev_device *dev)
             else if (del)
                 return del_partition(mod, &it->item, dev);
             else {
-                LOG_ERR("unimplemented: 'change' event on partition: %s",
-                        udev_device_get_devpath(dev));
+                LOG_ERR("unimplemented: 'change' event on partition: %s", udev_device_get_devpath(dev));
                 return false;
             }
             break;
@@ -606,15 +590,15 @@ run(struct module *mod)
     udev_enumerate_add_match_subsystem(dev_enum, "block");
 
     /* TODO: verify how an optical presents itself */
-    //udev_enumerate_add_match_sysattr(dev_enum, "removable", "1");
+    // udev_enumerate_add_match_sysattr(dev_enum, "removable", "1");
     udev_enumerate_add_match_property(dev_enum, "DEVTYPE", "disk");
     udev_enumerate_scan_devices(dev_enum);
 
     /* Loop list, and for each device, enumerate its partitions */
     struct udev_list_entry *entry = NULL;
-    udev_list_entry_foreach(entry, udev_enumerate_get_list_entry(dev_enum)) {
-        struct udev_device *dev = udev_device_new_from_syspath(
-            udev, udev_list_entry_get_name(entry));
+    udev_list_entry_foreach(entry, udev_enumerate_get_list_entry(dev_enum))
+    {
+        struct udev_device *dev = udev_device_new_from_syspath(udev, udev_list_entry_get_name(entry));
 
         struct block_device *block = add_device(mod, dev);
         if (block == NULL) {
@@ -631,9 +615,9 @@ run(struct module *mod)
         udev_enumerate_scan_devices(part_enum);
 
         struct udev_list_entry *sub_entry = NULL;
-        udev_list_entry_foreach(sub_entry, udev_enumerate_get_list_entry(part_enum)) {
-            struct udev_device *partition = udev_device_new_from_syspath(
-                udev, udev_list_entry_get_name(sub_entry));
+        udev_list_entry_foreach(sub_entry, udev_enumerate_get_list_entry(part_enum))
+        {
+            struct udev_device *partition = udev_device_new_from_syspath(udev, udev_list_entry_get_name(sub_entry));
             add_partition(mod, block, partition);
             udev_device_unref(partition);
         }
@@ -673,8 +657,10 @@ run(struct module *mod)
         bool update = false;
 
         if (fds[2].revents & POLLPRI) {
-            tll_foreach(m->devices, dev) {
-                tll_foreach(dev->item.partitions, part) {
+            tll_foreach(m->devices, dev)
+            {
+                tll_foreach(dev->item.partitions, part)
+                {
                     if (update_mount_points(&part->item))
                         update = true;
                 }
@@ -703,8 +689,8 @@ run(struct module *mod)
 }
 
 static struct module *
-removables_new(struct particle *label, int left_spacing, int right_spacing,
-               size_t ignore_count, const char *ignore[static ignore_count])
+removables_new(struct particle *label, int left_spacing, int right_spacing, size_t ignore_count,
+               const char *ignore[static ignore_count])
 {
     struct private *priv = calloc(1, sizeof(*priv));
     priv->label = label;
@@ -732,26 +718,22 @@ from_conf(const struct yml_node *node, struct conf_inherit inherited)
     const struct yml_node *right_spacing = yml_get_value(node, "right-spacing");
     const struct yml_node *ignore_list = yml_get_value(node, "ignore");
 
-    int left = spacing != NULL ? yml_value_as_int(spacing) :
-        left_spacing != NULL ? yml_value_as_int(left_spacing) : 0;
-    int right = spacing != NULL ? yml_value_as_int(spacing) :
-        right_spacing != NULL ? yml_value_as_int(right_spacing) : 0;
+    int left = spacing != NULL ? yml_value_as_int(spacing) : left_spacing != NULL ? yml_value_as_int(left_spacing) : 0;
+    int right = spacing != NULL         ? yml_value_as_int(spacing)
+                : right_spacing != NULL ? yml_value_as_int(right_spacing)
+                                        : 0;
 
     size_t ignore_count = ignore_list != NULL ? yml_list_length(ignore_list) : 0;
     const char *ignore[max(ignore_count, 1)];
 
     if (ignore_list != NULL) {
         size_t i = 0;
-        for (struct yml_list_iter iter = yml_list_iter(ignore_list);
-             iter.node != NULL;
-             yml_list_next(&iter), i++)
-        {
+        for (struct yml_list_iter iter = yml_list_iter(ignore_list); iter.node != NULL; yml_list_next(&iter), i++) {
             ignore[i] = yml_value_as_string(iter.node);
         }
     }
 
-    return removables_new(
-        conf_to_particle(content, inherited), left, right, ignore_count, ignore);
+    return removables_new(conf_to_particle(content, inherited), left, right, ignore_count, ignore);
 }
 
 static bool

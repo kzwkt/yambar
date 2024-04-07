@@ -1,10 +1,10 @@
 #include "config.h"
 
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
 #include <assert.h>
 #include <ctype.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include <dlfcn.h>
 
@@ -21,9 +21,7 @@
 static uint8_t
 hex_nibble(char hex)
 {
-    assert((hex >= '0' && hex <= '9') ||
-           (hex >= 'a' && hex <= 'f') ||
-           (hex >= 'A' && hex <= 'F'));
+    assert((hex >= '0' && hex <= '9') || (hex >= 'a' && hex <= 'f') || (hex >= 'A' && hex <= 'F'));
 
     if (hex >= '0' && hex <= '9')
         return hex - '0';
@@ -57,9 +55,9 @@ conf_to_color(const struct yml_node *node)
     alpha |= alpha << 8;
 
     return (pixman_color_t){
-        .red =   (uint32_t)(red << 8 | red) * alpha / 0xffff,
+        .red = (uint32_t)(red << 8 | red) * alpha / 0xffff,
         .green = (uint32_t)(green << 8 | green) * alpha / 0xffff,
-        .blue =  (uint32_t)(blue << 8 | blue) * alpha / 0xffff,
+        .blue = (uint32_t)(blue << 8 | blue) * alpha / 0xffff,
         .alpha = alpha,
     };
 }
@@ -74,10 +72,7 @@ conf_to_font(const struct yml_node *node)
     const char **fonts = NULL;
 
     char *copy = strdup(font_spec);
-    for (const char *font = strtok(copy, ",");
-         font != NULL;
-         font = strtok(NULL, ","))
-    {
+    for (const char *font = strtok(copy, ","); font != NULL; font = strtok(NULL, ",")) {
         /* Trim spaces, strictly speaking not necessary, but looks nice :) */
         while (isspace(font[0]))
             font++;
@@ -112,9 +107,7 @@ conf_to_font_shaping(const struct yml_node *node)
     else if (strcmp(v, "graphemes") == 0) {
         static bool have_warned = false;
 
-        if (!have_warned &&
-            !(fcft_capabilities() & FCFT_CAPABILITY_GRAPHEME_SHAPING))
-        {
+        if (!have_warned && !(fcft_capabilities() & FCFT_CAPABILITY_GRAPHEME_SHAPING)) {
             have_warned = true;
             LOG_WARN("cannot enable grapheme shaping; no support in fcft");
         }
@@ -124,9 +117,7 @@ conf_to_font_shaping(const struct yml_node *node)
     else if (strcmp(v, "full") == 0) {
         static bool have_warned = false;
 
-        if (!have_warned &&
-            !(fcft_capabilities() & FCFT_CAPABILITY_TEXT_RUN_SHAPING))
-        {
+        if (!have_warned && !(fcft_capabilities() & FCFT_CAPABILITY_TEXT_RUN_SHAPING)) {
             have_warned = true;
             LOG_WARN("cannot enable full text shaping; no support in fcft");
         }
@@ -154,25 +145,20 @@ conf_to_deco(const struct yml_node *node)
 }
 
 static struct particle *
-particle_simple_list_from_config(const struct yml_node *node,
-                                 struct conf_inherit inherited)
+particle_simple_list_from_config(const struct yml_node *node, struct conf_inherit inherited)
 {
     size_t count = yml_list_length(node);
     struct particle *parts[count];
 
     size_t idx = 0;
-    for (struct yml_list_iter it = yml_list_iter(node);
-         it.node != NULL;
-         yml_list_next(&it), idx++)
-    {
+    for (struct yml_list_iter it = yml_list_iter(node); it.node != NULL; yml_list_next(&it), idx++) {
         parts[idx] = conf_to_particle(it.node, inherited);
     }
 
     /* Lazy-loaded function pointer to particle_list_new() */
-    static struct particle *(*particle_list_new)(
-        struct particle *common,
-        struct particle *particles[], size_t count,
-        int left_spacing, int right_spacing) = NULL;
+    static struct particle *(*particle_list_new)(struct particle *common, struct particle *particles[], size_t count,
+                                                 int left_spacing, int right_spacing)
+        = NULL;
 
     if (particle_list_new == NULL) {
         const struct plugin *plug = plugin_load("list", PLUGIN_PARTICLE);
@@ -181,9 +167,8 @@ particle_simple_list_from_config(const struct yml_node *node,
         assert(particle_list_new != NULL);
     }
 
-    struct particle *common = particle_common_new(
-        0, 0, NULL, fcft_clone(inherited.font), inherited.font_shaping,
-        inherited.foreground, NULL);
+    struct particle *common = particle_common_new(0, 0, NULL, fcft_clone(inherited.font), inherited.font_shaping,
+                                                  inherited.foreground, NULL);
 
     return particle_list_new(common, parts, count, 0, 2);
 }
@@ -206,10 +191,8 @@ conf_to_particle(const struct yml_node *node, struct conf_inherit inherited)
     const struct yml_node *foreground_node = yml_get_value(pair.value, "foreground");
     const struct yml_node *deco_node = yml_get_value(pair.value, "deco");
 
-    int left = margin != NULL ? yml_value_as_int(margin) :
-        left_margin != NULL ? yml_value_as_int(left_margin) : 0;
-    int right = margin != NULL ? yml_value_as_int(margin) :
-        right_margin != NULL ? yml_value_as_int(right_margin) : 0;
+    int left = margin != NULL ? yml_value_as_int(margin) : left_margin != NULL ? yml_value_as_int(left_margin) : 0;
+    int right = margin != NULL ? yml_value_as_int(margin) : right_margin != NULL ? yml_value_as_int(right_margin) : 0;
 
     char *on_click_templates[MOUSE_BTN_COUNT] = {NULL};
     if (on_click != NULL) {
@@ -234,10 +217,7 @@ conf_to_particle(const struct yml_node *node, struct conf_inherit inherited)
         }
 
         else if (yml_is_dict(on_click)) {
-            for (struct yml_dict_iter it = yml_dict_iter(on_click);
-                 it.key != NULL;
-                 yml_dict_next(&it))
-            {
+            for (struct yml_dict_iter it = yml_dict_iter(on_click); it.key != NULL; yml_dict_next(&it)) {
                 const char *key = yml_value_as_string(it.key);
                 const char *yml_template = yml_value_as_string(it.value);
 
@@ -286,16 +266,14 @@ conf_to_particle(const struct yml_node *node, struct conf_inherit inherited)
      * clone the font, since each particle takes ownership of its own
      * font.
      */
-    struct fcft_font *font = font_node != NULL
-        ? conf_to_font(font_node) : fcft_clone(inherited.font);
-    enum font_shaping font_shaping = font_shaping_node != NULL
-        ? conf_to_font_shaping(font_shaping_node) : inherited.font_shaping;
-    pixman_color_t foreground = foreground_node != NULL
-        ? conf_to_color(foreground_node) : inherited.foreground;
+    struct fcft_font *font = font_node != NULL ? conf_to_font(font_node) : fcft_clone(inherited.font);
+    enum font_shaping font_shaping
+        = font_shaping_node != NULL ? conf_to_font_shaping(font_shaping_node) : inherited.font_shaping;
+    pixman_color_t foreground = foreground_node != NULL ? conf_to_color(foreground_node) : inherited.foreground;
 
     /* Instantiate base/common particle */
-    struct particle *common = particle_common_new(
-        left, right, on_click_templates, font, font_shaping, foreground, deco);
+    struct particle *common
+        = particle_common_new(left, right, on_click_templates, font, font_shaping, foreground, deco);
 
     const struct particle_iface *iface = plugin_load_particle(type);
 
@@ -323,8 +301,7 @@ conf_to_bar(const struct yml_node *bar, enum bar_backend backend)
     conf.height = yml_value_as_int(height);
 
     const struct yml_node *location = yml_get_value(bar, "location");
-    conf.location = strcmp(yml_value_as_string(location), "top") == 0
-        ? BAR_TOP : BAR_BOTTOM;
+    conf.location = strcmp(yml_value_as_string(location), "top") == 0 ? BAR_TOP : BAR_BOTTOM;
 
     const struct yml_node *background = yml_get_value(bar, "background");
     conf.background = conf_to_color(background);
@@ -352,7 +329,6 @@ conf_to_bar(const struct yml_node *bar, enum bar_backend backend)
             assert(false);
     }
 
-
     const struct yml_node *spacing = yml_get_value(bar, "spacing");
     if (spacing != NULL)
         conf.left_spacing = conf.right_spacing = yml_value_as_int(spacing);
@@ -377,11 +353,8 @@ conf_to_bar(const struct yml_node *bar, enum bar_backend backend)
     if (right_margin != NULL)
         conf.right_margin = yml_value_as_int(right_margin);
 
-    const struct yml_node *trackpad_sensitivity =
-        yml_get_value(bar, "trackpad-sensitivity");
-    conf.trackpad_sensitivity = trackpad_sensitivity != NULL
-        ? yml_value_as_int(trackpad_sensitivity)
-        : 30;
+    const struct yml_node *trackpad_sensitivity = yml_get_value(bar, "trackpad-sensitivity");
+    conf.trackpad_sensitivity = trackpad_sensitivity != NULL ? yml_value_as_int(trackpad_sensitivity) : 30;
 
     const struct yml_node *border = yml_get_value(bar, "border");
     if (border != NULL) {
@@ -398,10 +371,8 @@ conf_to_bar(const struct yml_node *bar, enum bar_backend backend)
         const struct yml_node *bottom_margin = yml_get_value(border, "bottom-margin");
 
         if (width != NULL)
-            conf.border.left_width =
-                conf.border.right_width =
-                conf.border.top_width =
-                conf.border.bottom_width = yml_value_as_int(width);
+            conf.border.left_width = conf.border.right_width = conf.border.top_width = conf.border.bottom_width
+                = yml_value_as_int(width);
 
         if (left_width != NULL)
             conf.border.left_width = yml_value_as_int(left_width);
@@ -416,10 +387,8 @@ conf_to_bar(const struct yml_node *bar, enum bar_backend backend)
             conf.border.color = conf_to_color(color);
 
         if (margin != NULL)
-            conf.border.left_margin =
-                conf.border.right_margin =
-                conf.border.top_margin =
-                conf.border.bottom_margin = yml_value_as_int(margin);
+            conf.border.left_margin = conf.border.right_margin = conf.border.top_margin = conf.border.bottom_margin
+                = yml_value_as_int(margin);
 
         if (left_margin != NULL)
             conf.border.left_margin = yml_value_as_int(left_margin);
@@ -474,10 +443,7 @@ conf_to_bar(const struct yml_node *bar, enum bar_backend backend)
             struct module **mods = calloc(count, sizeof(*mods));
 
             size_t idx = 0;
-            for (struct yml_list_iter it = yml_list_iter(node);
-                 it.node != NULL;
-                 yml_list_next(&it), idx++)
-            {
+            for (struct yml_list_iter it = yml_list_iter(node); it.node != NULL; yml_list_next(&it), idx++) {
                 struct yml_dict_iter m = yml_dict_iter(it.node);
                 const char *mod_name = yml_value_as_string(m.key);
 
@@ -489,16 +455,13 @@ conf_to_bar(const struct yml_node *bar, enum bar_backend backend)
                  */
                 const struct yml_node *mod_font = yml_get_value(m.value, "font");
                 const struct yml_node *mod_font_shaping = yml_get_value(m.value, "font-shaping");
-                const struct yml_node *mod_foreground = yml_get_value(
-                    m.value, "foreground");
+                const struct yml_node *mod_foreground = yml_get_value(m.value, "foreground");
 
                 struct conf_inherit mod_inherit = {
-                    .font = mod_font != NULL
-                        ? conf_to_font(mod_font) : inherited.font,
-                    .font_shaping = mod_font_shaping != NULL
-                        ? conf_to_font_shaping(mod_font_shaping) : inherited.font_shaping,
-                    .foreground = mod_foreground != NULL
-                        ? conf_to_color(mod_foreground) : inherited.foreground,
+                    .font = mod_font != NULL ? conf_to_font(mod_font) : inherited.font,
+                    .font_shaping
+                    = mod_font_shaping != NULL ? conf_to_font_shaping(mod_font_shaping) : inherited.font_shaping,
+                    .foreground = mod_foreground != NULL ? conf_to_color(mod_foreground) : inherited.foreground,
                 };
 
                 const struct module_iface *iface = plugin_load_module(mod_name);

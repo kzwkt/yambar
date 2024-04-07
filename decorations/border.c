@@ -1,7 +1,7 @@
 #include <stdlib.h>
 
-#include "../config.h"
 #include "../config-verify.h"
+#include "../config.h"
 #include "../decoration.h"
 #include "../plugin.h"
 
@@ -12,7 +12,8 @@
 #define min(x, y) ((x) < (y) ? (x) : (y))
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
-struct private {
+struct private
+{
     pixman_color_t color;
     int size;
 };
@@ -29,21 +30,20 @@ static void
 expose(const struct deco *deco, pixman_image_t *pix, int x, int y, int width, int height)
 {
     const struct private *d = deco->private;
-    pixman_image_fill_rectangles(
-        PIXMAN_OP_OVER, pix, &d->color, 4,
-        (pixman_rectangle16_t []){
-            /* Top */
-            {x, y, width, min(d->size, height)},
+    pixman_image_fill_rectangles(PIXMAN_OP_OVER, pix, &d->color, 4,
+                                 (pixman_rectangle16_t[]){
+                                     /* Top */
+                                     {x, y, width, min(d->size, height)},
 
-            /* Bottom */
-            {x, max(y + height - d->size, y), width, min(d->size, height)},
+                                     /* Bottom */
+                                     {x, max(y + height - d->size, y), width, min(d->size, height)},
 
-            /* Left */
-            {x, y, min(d->size, width), height},
+                                     /* Left */
+                                     {x, y, min(d->size, width), height},
 
-            /* Right */
-            {max(x + width - d->size, x), y, min(d->size, width), height},
-        });
+                                     /* Right */
+                                     {max(x + width - d->size, x), y, min(d->size, width), height},
+                                 });
 }
 
 static struct deco *
@@ -66,9 +66,7 @@ from_conf(const struct yml_node *node)
 {
     const struct yml_node *color = yml_get_value(node, "color");
     const struct yml_node *size = yml_get_value(node, "size");
-    return border_new(
-        conf_to_color(color),
-        size != NULL ? yml_value_as_int(size) : 1);
+    return border_new(conf_to_color(color), size != NULL ? yml_value_as_int(size) : 1);
 }
 
 static bool

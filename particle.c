@@ -1,21 +1,21 @@
 #include "particle.h"
 
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
 #include <assert.h>
 #include <errno.h>
 #include <signal.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/wait.h>
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #define LOG_MODULE "particle"
 #define LOG_ENABLE_DBG 0
-#include "log.h"
 #include "bar/bar.h"
+#include "log.h"
 
 void
 particle_default_destroy(struct particle *particle)
@@ -29,10 +29,8 @@ particle_default_destroy(struct particle *particle)
 }
 
 struct particle *
-particle_common_new(int left_margin, int right_margin,
-                    char **on_click_templates,
-                    struct fcft_font *font, enum font_shaping font_shaping,
-                    pixman_color_t foreground, struct deco *deco)
+particle_common_new(int left_margin, int right_margin, char **on_click_templates, struct fcft_font *font,
+                    enum font_shaping font_shaping, pixman_color_t foreground, struct deco *deco)
 {
     struct particle *p = calloc(1, sizeof(*p));
     p->left_margin = left_margin;
@@ -63,13 +61,11 @@ exposable_default_destroy(struct exposable *exposable)
 }
 
 void
-exposable_render_deco(const struct exposable *exposable,
-                      pixman_image_t *pix, int x, int y, int height)
+exposable_render_deco(const struct exposable *exposable, pixman_image_t *pix, int x, int y, int height)
 {
     const struct deco *deco = exposable->particle->deco;
     if (deco != NULL)
         deco->expose(deco, pix, x, y, exposable->width, height);
-
 }
 
 static bool
@@ -114,9 +110,7 @@ tokenize_cmdline(char *cmdline, char ***argv)
                 return false;
             }
 
-            if (!push_argv(argv, &argv_size, p, &idx) ||
-                !push_argv(argv, &argv_size, NULL, &idx))
-            {
+            if (!push_argv(argv, &argv_size, p, &idx) || !push_argv(argv, &argv_size, NULL, &idx)) {
                 goto err;
             } else
                 return true;
@@ -152,8 +146,7 @@ err:
 }
 
 void
-exposable_default_on_mouse(struct exposable *exposable, struct bar *bar,
-                           enum mouse_event event, enum mouse_button btn,
+exposable_default_on_mouse(struct exposable *exposable, struct bar *bar, enum mouse_event event, enum mouse_button btn,
                            int x, int y)
 {
 #if defined(LOG_ENABLE_DBG) && LOG_ENABLE_DBG
@@ -168,17 +161,13 @@ exposable_default_on_mouse(struct exposable *exposable, struct bar *bar,
         [MOUSE_BTN_PREVIOUS] = "previous",
         [MOUSE_BTN_NEXT] = "next",
     };
-    LOG_DBG("on_mouse: exposable=%p, event=%s, btn=%s, x=%d, y=%d (on-click=%s)",
-            exposable, event == ON_MOUSE_MOTION ? "motion" : "click",
-            button_name[btn], x, y, exposable->on_click[btn]);
+    LOG_DBG("on_mouse: exposable=%p, event=%s, btn=%s, x=%d, y=%d (on-click=%s)", exposable,
+            event == ON_MOUSE_MOTION ? "motion" : "click", button_name[btn], x, y, exposable->on_click[btn]);
 #endif
 
     /* If we have a handler, change cursor to a hand */
-    const char *cursor =
-        (exposable->particle != NULL &&
-         exposable->particle->have_on_click_template)
-        ? "hand2"
-        : "left_ptr";
+    const char *cursor
+        = (exposable->particle != NULL && exposable->particle->have_on_click_template) ? "hand2" : "left_ptr";
     bar->set_cursor(bar, cursor);
 
     /* If this is a mouse click, and we have a handler, execute it */
@@ -246,7 +235,7 @@ exposable_default_on_mouse(struct exposable *exposable, struct bar *bar,
 
             case 0:
                 /* Child */
-                close(pipe_fds[0]);  /* Close read end */
+                close(pipe_fds[0]); /* Close read end */
 
                 LOG_DBG("executing on-click handler: %s", cmd);
 
@@ -254,11 +243,8 @@ exposable_default_on_mouse(struct exposable *exposable, struct bar *bar,
                 sigemptyset(&mask);
 
                 const struct sigaction sa = {.sa_handler = SIG_DFL};
-                if (sigaction(SIGINT, &sa, NULL) < 0 ||
-                    sigaction(SIGTERM, &sa, NULL) < 0 ||
-                    sigaction(SIGCHLD, &sa, NULL) < 0 ||
-                    sigprocmask(SIG_SETMASK, &mask, NULL) < 0)
-                {
+                if (sigaction(SIGINT, &sa, NULL) < 0 || sigaction(SIGTERM, &sa, NULL) < 0
+                    || sigaction(SIGCHLD, &sa, NULL) < 0 || sigprocmask(SIG_SETMASK, &mask, NULL) < 0) {
                     goto fail;
                 }
 
@@ -271,10 +257,8 @@ exposable_default_on_mouse(struct exposable *exposable, struct bar *bar,
                     goto fail;
                 }
 
-                if (dup2(dev_null_r, STDIN_FILENO) == -1 ||
-                    dup2(dev_null_w, STDOUT_FILENO) == -1 ||
-                    dup2(dev_null_w, STDERR_FILENO) == -1)
-                {
+                if (dup2(dev_null_r, STDIN_FILENO) == -1 || dup2(dev_null_w, STDOUT_FILENO) == -1
+                    || dup2(dev_null_w, STDERR_FILENO) == -1) {
                     LOG_ERRNO("failed to redirect stdin/stdout/stderr");
                     goto fail;
                 }
@@ -316,10 +300,7 @@ exposable_common_new(const struct particle *particle, const struct tag_set *tags
     exposable->particle = particle;
 
     if (particle != NULL && particle->have_on_click_template) {
-        tags_expand_templates(
-            exposable->on_click,
-            (const char **)particle->on_click_templates,
-            MOUSE_BTN_COUNT, tags);
+        tags_expand_templates(exposable->on_click, (const char **)particle->on_click_templates, MOUSE_BTN_COUNT, tags);
     }
     exposable->destroy = &exposable_default_destroy;
     exposable->on_mouse = &exposable_default_on_mouse;

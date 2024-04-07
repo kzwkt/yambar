@@ -1,26 +1,26 @@
+#include <assert.h>
+#include <errno.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <assert.h>
-#include <errno.h>
-#include <math.h>
 
 #include <poll.h>
 
-#include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 
 #include <libudev.h>
 #include <tllist.h>
 
 #define LOG_MODULE "battery"
 #define LOG_ENABLE_DBG 0
-#include "../log.h"
 #include "../bar/bar.h"
-#include "../config.h"
 #include "../config-verify.h"
+#include "../config.h"
+#include "../log.h"
 #include "../plugin.h"
 
 #define max(x, y) ((x) > (y) ? (x) : (y))
@@ -37,7 +37,8 @@ struct current_state {
     struct timespec time;
 };
 
-struct private {
+struct private
+{
     struct particle *label;
 
     long poll_interval;
@@ -65,7 +66,7 @@ static int64_t
 difftimespec_ns(const struct timespec after, const struct timespec before)
 {
     return ((int64_t)after.tv_sec - (int64_t)before.tv_sec) * (int64_t)one_sec_in_ns
-         + ((int64_t)after.tv_nsec - (int64_t)before.tv_nsec);
+           + ((int64_t)after.tv_nsec - (int64_t)before.tv_nsec);
 }
 
 // Linear Exponential Moving Average (unevenly spaced time series)
@@ -88,7 +89,7 @@ ema_linear(struct current_state *state, struct current_state curr, long tau)
         w2 = (1 - w) / tmp;
     } else {
         // Use taylor expansion for numerical stability
-        w2 = 1 - tmp/2 + tmp*tmp/6 - tmp*tmp*tmp/24;
+        w2 = 1 - tmp / 2 + tmp * tmp / 6 - tmp * tmp * tmp / 24;
     }
 
     double ema = state->ema * w + curr.current * (1 - w2) + state->current * (w2 - w);
@@ -101,8 +102,7 @@ ema_linear(struct current_state *state, struct current_state curr, long tau)
 }
 
 static void
-timespec_sub(const struct timespec *a, const struct timespec *b,
-             struct timespec *res)
+timespec_sub(const struct timespec *a, const struct timespec *b, struct timespec *res)
 {
 
     res->tv_sec = a->tv_sec - b->tv_sec;
@@ -145,11 +145,8 @@ content(struct module *mod)
 
     mtx_lock(&mod->lock);
 
-    assert(m->state == STATE_FULL ||
-           m->state == STATE_NOTCHARGING ||
-           m->state == STATE_CHARGING ||
-           m->state == STATE_DISCHARGING ||
-           m->state == STATE_UNKNOWN);
+    assert(m->state == STATE_FULL || m->state == STATE_NOTCHARGING || m->state == STATE_CHARGING
+           || m->state == STATE_DISCHARGING || m->state == STATE_UNKNOWN);
 
     unsigned long hours;
     unsigned long minutes;
@@ -162,9 +159,8 @@ content(struct module *mod)
         minutes = m->time_to_full / 60;
         hours = minutes / 60;
         minutes = minutes % 60;
-    } else if  (m->energy_full >= 0 && m->charge && m->power >= 0) {
-        unsigned long energy = m->state == STATE_CHARGING
-            ? m->energy_full - m->energy : m->energy;
+    } else if (m->energy_full >= 0 && m->charge && m->power >= 0) {
+        unsigned long energy = m->state == STATE_CHARGING ? m->energy_full - m->energy : m->energy;
 
         double hours_as_float;
         if (m->state == STATE_FULL || m->state == STATE_NOTCHARGING)
@@ -177,8 +173,7 @@ content(struct module *mod)
         hours = hours_as_float;
         minutes = (hours_as_float - (double)hours) * 60;
     } else if (m->charge_full >= 0 && m->charge >= 0 && m->ema_current.current >= 0) {
-        unsigned long charge = m->state == STATE_CHARGING
-            ? m->charge_full - m->charge : m->charge;
+        unsigned long charge = m->state == STATE_CHARGING ? m->charge_full - m->charge : m->charge;
 
         double hours_as_float;
         if (m->state == STATE_FULL || m->state == STATE_NOTCHARGING)
@@ -281,8 +276,7 @@ initialize(struct private *m)
     {
         int fd = openat(base_dir_fd, "manufacturer", O_RDONLY);
         if (fd == -1) {
-            LOG_WARN("/sys/class/power_supply/%s/manufacturer: %s",
-                     m->battery, strerror(errno));
+            LOG_WARN("/sys/class/power_supply/%s/manufacturer: %s", m->battery, strerror(errno));
             m->manufacturer = NULL;
         } else {
             m->manufacturer = strdup(readline_from_fd(fd, sizeof(line_buf), line_buf));
@@ -293,8 +287,7 @@ initialize(struct private *m)
     {
         int fd = openat(base_dir_fd, "model_name", O_RDONLY);
         if (fd == -1) {
-            LOG_WARN("/sys/class/power_supply/%s/model_name: %s",
-                     m->battery, strerror(errno));
+            LOG_WARN("/sys/class/power_supply/%s/model_name: %s", m->battery, strerror(errno));
             m->model = NULL;
         } else {
             m->model = strdup(readline_from_fd(fd, sizeof(line_buf), line_buf));
@@ -302,9 +295,8 @@ initialize(struct private *m)
         }
     }
 
-    if (faccessat(base_dir_fd, "energy_full_design", O_RDONLY, 0) == 0 &&
-        faccessat(base_dir_fd, "energy_full", O_RDONLY, 0) == 0)
-    {
+    if (faccessat(base_dir_fd, "energy_full_design", O_RDONLY, 0) == 0
+        && faccessat(base_dir_fd, "energy_full", O_RDONLY, 0) == 0) {
         {
             int fd = openat(base_dir_fd, "energy_full_design", O_RDONLY);
             if (fd == -1) {
@@ -330,9 +322,8 @@ initialize(struct private *m)
         m->energy_full = m->energy_full_design = -1;
     }
 
-    if (faccessat(base_dir_fd, "charge_full_design", O_RDONLY, 0) == 0 &&
-        faccessat(base_dir_fd, "charge_full", O_RDONLY, 0) == 0)
-    {
+    if (faccessat(base_dir_fd, "charge_full_design", O_RDONLY, 0) == 0
+        && faccessat(base_dir_fd, "charge_full", O_RDONLY, 0) == 0) {
         {
             int fd = openat(base_dir_fd, "charge_full_design", O_RDONLY);
             if (fd == -1) {
@@ -462,8 +453,8 @@ update_status(struct module *mod)
     }
 
     LOG_DBG("capacity: %ld, energy: %ld, power: %ld, charge=%ld, current=%ld, "
-            "time-to-empty: %ld, time-to-full: %ld", capacity,
-            energy, power, charge, current, time_to_empty, time_to_full);
+            "time-to-empty: %ld, time-to-full: %ld",
+            capacity, energy, power, charge, current, time_to_empty, time_to_full);
 
     mtx_lock(&mod->lock);
     if (m->state != state) {
@@ -494,13 +485,10 @@ run(struct module *mod)
     if (!initialize(m))
         return -1;
 
-    LOG_INFO("%s: %s %s (at %.1f%% of original capacity)",
-             m->battery, m->manufacturer, m->model,
-             (m->energy_full > 0
-              ? 100.0 * m->energy_full / m->energy_full_design
-              : m->charge_full > 0
-              ? 100.0 * m->charge_full / m->charge_full_design
-              : 0.0));
+    LOG_INFO("%s: %s %s (at %.1f%% of original capacity)", m->battery, m->manufacturer, m->model,
+             (m->energy_full > 0   ? 100.0 * m->energy_full / m->energy_full_design
+              : m->charge_full > 0 ? 100.0 * m->charge_full / m->charge_full_design
+                                   : 0.0));
 
     int ret = 1;
 
@@ -555,12 +543,11 @@ run(struct module *mod)
             struct udev_device *dev = udev_monitor_receive_device(mon);
             if (dev != NULL) {
                 const char *sysname = udev_device_get_sysname(dev);
-                udev_for_us =
-                    sysname != NULL && strcmp(sysname, m->battery) == 0;
+                udev_for_us = sysname != NULL && strcmp(sysname, m->battery) == 0;
 
                 if (!udev_for_us) {
-                    LOG_DBG("udev notification not for us (%s != %s)",
-                            m->battery, sysname != sysname ? sysname : "NULL");
+                    LOG_DBG("udev notification not for us (%s != %s)", m->battery,
+                            sysname != sysname ? sysname : "NULL");
                 } else
                     LOG_DBG("triggering update due to udev notification");
 
@@ -586,11 +573,9 @@ run(struct module *mod)
             struct timespec timeout_consumed;
             timespec_sub(&time_after_poll, &time_before_poll, &timeout_consumed);
 
-            const int timeout_consumed_ms =
-                timeout_consumed.tv_sec * 1000 + timeout_consumed.tv_nsec / 1000000;
+            const int timeout_consumed_ms = timeout_consumed.tv_sec * 1000 + timeout_consumed.tv_nsec / 1000000;
 
-            LOG_DBG("timeout-left before: %dms, consumed: %dms, updated: %dms",
-                    timeout_left_ms, timeout_consumed_ms,
+            LOG_DBG("timeout-left before: %dms, consumed: %dms, updated: %dms", timeout_left_ms, timeout_consumed_ms,
                     max(timeout_left_ms - timeout_consumed_ms, 0));
 
             timeout_left_ms -= timeout_consumed_ms;
@@ -608,7 +593,8 @@ out:
 }
 
 static struct module *
-battery_new(const char *battery, struct particle *label, long poll_interval_msecs, int battery_scale, long smoothing_secs)
+battery_new(const char *battery, struct particle *label, long poll_interval_msecs, int battery_scale,
+            long smoothing_secs)
 {
     struct private *m = calloc(1, sizeof(*m));
     m->label = label;
@@ -617,7 +603,7 @@ battery_new(const char *battery, struct particle *label, long poll_interval_msec
     m->smoothing_scale = smoothing_secs * one_sec_in_ns;
     m->battery = strdup(battery);
     m->state = STATE_UNKNOWN;
-    m->ema_current = (struct current_state){ -1, 0, (struct timespec){0, 0} };
+    m->ema_current = (struct current_state){-1, 0, (struct timespec){0, 0}};
 
     struct module *mod = module_common_new();
     mod->private = m;
@@ -637,18 +623,10 @@ from_conf(const struct yml_node *node, struct conf_inherit inherited)
     const struct yml_node *battery_scale = yml_get_value(node, "battery-scale");
     const struct yml_node *smoothing_secs = yml_get_value(node, "smoothing-secs");
 
-    return battery_new(
-        yml_value_as_string(name),
-        conf_to_particle(c, inherited),
-        (poll_interval != NULL
-         ? yml_value_as_int(poll_interval)
-         : default_poll_interval),
-        (battery_scale != NULL
-         ? yml_value_as_int(battery_scale)
-         : 1),
-        (smoothing_secs != NULL
-         ? yml_value_as_int(smoothing_secs)
-         : 100));
+    return battery_new(yml_value_as_string(name), conf_to_particle(c, inherited),
+                       (poll_interval != NULL ? yml_value_as_int(poll_interval) : default_poll_interval),
+                       (battery_scale != NULL ? yml_value_as_int(battery_scale) : 1),
+                       (smoothing_secs != NULL ? yml_value_as_int(smoothing_secs) : 100));
 }
 
 static bool
@@ -660,8 +638,7 @@ conf_verify_poll_interval(keychain_t *chain, const struct yml_node *node)
     const long value = yml_value_as_int(node);
 
     if (value != 0 && value < min_poll_interval) {
-        LOG_ERR("%s: interval value cannot be less than %ldms",
-                conf_err_prefix(chain, node), min_poll_interval);
+        LOG_ERR("%s: interval value cannot be less than %ldms", conf_err_prefix(chain, node), min_poll_interval);
         return false;
     }
 

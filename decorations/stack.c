@@ -1,13 +1,14 @@
 #include <stdlib.h>
 
 #define LOG_MODULE "stack"
-#include "../log.h"
-#include "../config.h"
 #include "../config-verify.h"
+#include "../config.h"
 #include "../decoration.h"
+#include "../log.h"
 #include "../plugin.h"
 
-struct private {
+struct private
+{
     struct deco **decos;
     size_t count;
 };
@@ -57,10 +58,7 @@ from_conf(const struct yml_node *node)
     struct deco *decos[count];
     size_t idx = 0;
 
-    for (struct yml_list_iter it = yml_list_iter(node);
-         it.node != NULL;
-         yml_list_next(&it), idx++)
-    {
+    for (struct yml_list_iter it = yml_list_iter(node); it.node != NULL; yml_list_next(&it), idx++) {
         decos[idx] = conf_to_deco(it.node);
     }
 
@@ -75,10 +73,7 @@ verify_conf(keychain_t *chain, const struct yml_node *node)
         return false;
     }
 
-    for (struct yml_list_iter it = yml_list_iter(node);
-         it.node != NULL;
-         yml_list_next(&it))
-    {
+    for (struct yml_list_iter it = yml_list_iter(node); it.node != NULL; yml_list_next(&it)) {
         if (!conf_verify_decoration(chain, it.node))
             return false;
     }

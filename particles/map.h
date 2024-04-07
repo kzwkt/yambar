@@ -28,7 +28,7 @@ struct map_condition {
 
 void free_map_condition(struct map_condition *c);
 
-typedef struct yy_buffer_state* YY_BUFFER_STATE;
+typedef struct yy_buffer_state *YY_BUFFER_STATE;
 YY_BUFFER_STATE yy_scan_string(const char *str);
 int yyparse();
 void yy_delete_buffer(YY_BUFFER_STATE buffer);

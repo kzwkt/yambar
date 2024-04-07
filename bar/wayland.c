@@ -1,25 +1,25 @@
 #include "wayland.h"
 
+#include <assert.h>
+#include <errno.h>
+#include <poll.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #include <unistd.h>
-#include <poll.h>
-#include <pthread.h>
-#include <errno.h>
 
-#include <sys/mman.h>
 #include <fcntl.h>
 #include <linux/input-event-codes.h>
+#include <sys/mman.h>
 
 #include <pixman.h>
 #include <wayland-client.h>
 #include <wayland-cursor.h>
 
 #include <tllist.h>
-#include <xdg-output-unstable-v1.h>
 #include <wlr-layer-shell-unstable-v1.h>
+#include <xdg-output-unstable-v1.h>
 
 #define LOG_MODULE "bar:wayland"
 #define LOG_ENABLE_DBG 0
@@ -29,7 +29,7 @@
 #include "private.h"
 
 #if !defined(MFD_NOEXEC_SEAL)
- #define MFD_NOEXEC_SEAL 0
+#define MFD_NOEXEC_SEAL 0
 #endif
 
 struct buffer {
@@ -116,16 +116,15 @@ struct wayland_backend {
     /* We're already waiting for a frame done callback */
     bool render_scheduled;
 
-    tll(struct buffer) buffers;     /* List of SHM buffers */
-    struct buffer *next_buffer;     /* Bar is rendering to this one */
-    struct buffer *pending_buffer;  /* Finished, but not yet rendered */
+    tll(struct buffer) buffers;    /* List of SHM buffers */
+    struct buffer *next_buffer;    /* Bar is rendering to this one */
+    struct buffer *pending_buffer; /* Finished, but not yet rendered */
     struct wl_callback *frame_callback;
 
     double aggregated_scroll;
     bool have_discrete;
 
-    void (*bar_on_mouse)(struct bar *bar, enum mouse_event event,
-                         enum mouse_button btn, int x, int y);
+    void (*bar_on_mouse)(struct bar *bar, enum mouse_event event, enum mouse_button btn, int x, int y);
 };
 
 static void
@@ -157,7 +156,7 @@ bar_backend_wayland_new(void)
 static void
 shm_format(void *data, struct wl_shm *wl_shm, uint32_t format)
 {
-    //printf("SHM format: 0x%08x\n", format);
+    // printf("SHM format: 0x%08x\n", format);
 }
 
 static const struct wl_shm_listener shm_listener = {
@@ -167,10 +166,7 @@ static const struct wl_shm_listener shm_listener = {
 static void
 update_cursor_surface(struct wayland_backend *backend, struct seat *seat)
 {
-    if (seat->pointer.serial == 0 ||
-        seat->pointer.cursor == NULL ||
-        seat->pointer.surface == NULL)
-    {
+    if (seat->pointer.serial == 0 || seat->pointer.cursor == NULL || seat->pointer.surface == NULL) {
         return;
     }
 
@@ -179,17 +175,12 @@ update_cursor_surface(struct wayland_backend *backend, struct seat *seat)
     const int scale = seat->pointer.scale;
     wl_surface_set_buffer_scale(seat->pointer.surface, scale);
 
-    wl_surface_attach(
-        seat->pointer.surface, wl_cursor_image_get_buffer(image), 0, 0);
+    wl_surface_attach(seat->pointer.surface, wl_cursor_image_get_buffer(image), 0, 0);
 
-    wl_pointer_set_cursor(
-        seat->wl_pointer, seat->pointer.serial,
-        seat->pointer.surface,
-        image->hotspot_x / scale, image->hotspot_y / scale);
+    wl_pointer_set_cursor(seat->wl_pointer, seat->pointer.serial, seat->pointer.surface, image->hotspot_x / scale,
+                          image->hotspot_y / scale);
 
-
-    wl_surface_damage_buffer(
-        seat->pointer.surface, 0, 0, INT32_MAX, INT32_MAX);
+    wl_surface_damage_buffer(seat->pointer.surface, 0, 0, INT32_MAX, INT32_MAX);
 
     wl_surface_commit(seat->pointer.surface);
     wl_display_flush(backend->display);
@@ -219,11 +210,9 @@ reload_cursor_theme(struct seat *seat, int new_scale)
         }
     }
 
-    LOG_INFO("%s: cursor theme: %s, size: %u, scale: %d",
-             seat->name, cursor_theme, cursor_size, new_scale);
+    LOG_INFO("%s: cursor theme: %s, size: %u, scale: %d", seat->name, cursor_theme, cursor_size, new_scale);
 
-    struct wl_cursor_theme *theme = wl_cursor_theme_load(
-        cursor_theme, cursor_size * new_scale, seat->backend->shm);
+    struct wl_cursor_theme *theme = wl_cursor_theme_load(cursor_theme, cursor_size * new_scale, seat->backend->shm);
 
     if (theme == NULL) {
         LOG_ERR("%s: failed to load cursor theme", seat->name);
@@ -235,8 +224,7 @@ reload_cursor_theme(struct seat *seat, int new_scale)
 }
 
 static void
-wl_pointer_enter(void *data, struct wl_pointer *wl_pointer,
-                 uint32_t serial, struct wl_surface *surface,
+wl_pointer_enter(void *data, struct wl_pointer *wl_pointer, uint32_t serial, struct wl_surface *surface,
                  wl_fixed_t surface_x, wl_fixed_t surface_y)
 {
     struct seat *seat = data;
@@ -252,8 +240,7 @@ wl_pointer_enter(void *data, struct wl_pointer *wl_pointer,
 }
 
 static void
-wl_pointer_leave(void *data, struct wl_pointer *wl_pointer,
-                 uint32_t serial, struct wl_surface *surface)
+wl_pointer_leave(void *data, struct wl_pointer *wl_pointer, uint32_t serial, struct wl_surface *surface)
 {
     struct seat *seat = data;
     struct wayland_backend *backend = seat->backend;
@@ -265,8 +252,7 @@ wl_pointer_leave(void *data, struct wl_pointer *wl_pointer,
 }
 
 static void
-wl_pointer_motion(void *data, struct wl_pointer *wl_pointer,
-                  uint32_t time, wl_fixed_t surface_x, wl_fixed_t surface_y)
+wl_pointer_motion(void *data, struct wl_pointer *wl_pointer, uint32_t time, wl_fixed_t surface_x, wl_fixed_t surface_y)
 {
     struct seat *seat = data;
     struct wayland_backend *backend = seat->backend;
@@ -275,14 +261,12 @@ wl_pointer_motion(void *data, struct wl_pointer *wl_pointer,
     seat->pointer.y = wl_fixed_to_int(surface_y) * backend->scale;
 
     backend->active_seat = seat;
-    backend->bar_on_mouse(
-        backend->bar, ON_MOUSE_MOTION, MOUSE_BTN_NONE,
-        seat->pointer.x, seat->pointer.y);
+    backend->bar_on_mouse(backend->bar, ON_MOUSE_MOTION, MOUSE_BTN_NONE, seat->pointer.x, seat->pointer.y);
 }
 
 static void
-wl_pointer_button(void *data, struct wl_pointer *wl_pointer,
-                  uint32_t serial, uint32_t time, uint32_t button, uint32_t state)
+wl_pointer_button(void *data, struct wl_pointer *wl_pointer, uint32_t serial, uint32_t time, uint32_t button,
+                  uint32_t state)
 {
     struct seat *seat = data;
     struct wayland_backend *backend = seat->backend;
@@ -293,23 +277,31 @@ wl_pointer_button(void *data, struct wl_pointer *wl_pointer,
         enum mouse_button btn;
 
         switch (button) {
-        case BTN_LEFT:   btn = MOUSE_BTN_LEFT; break;
-        case BTN_MIDDLE: btn = MOUSE_BTN_MIDDLE; break;
-        case BTN_RIGHT:  btn = MOUSE_BTN_RIGHT; break;
-        case BTN_SIDE:   btn = MOUSE_BTN_PREVIOUS; break;
-        case BTN_EXTRA:  btn = MOUSE_BTN_NEXT; break;
+        case BTN_LEFT:
+            btn = MOUSE_BTN_LEFT;
+            break;
+        case BTN_MIDDLE:
+            btn = MOUSE_BTN_MIDDLE;
+            break;
+        case BTN_RIGHT:
+            btn = MOUSE_BTN_RIGHT;
+            break;
+        case BTN_SIDE:
+            btn = MOUSE_BTN_PREVIOUS;
+            break;
+        case BTN_EXTRA:
+            btn = MOUSE_BTN_NEXT;
+            break;
         default:
             return;
         }
 
-        backend->bar_on_mouse(
-            backend->bar, ON_MOUSE_CLICK, btn, seat->pointer.x, seat->pointer.y);
+        backend->bar_on_mouse(backend->bar, ON_MOUSE_CLICK, btn, seat->pointer.x, seat->pointer.y);
     }
 }
 
 static void
-wl_pointer_axis(void *data, struct wl_pointer *wl_pointer,
-                uint32_t time, uint32_t axis, wl_fixed_t value)
+wl_pointer_axis(void *data, struct wl_pointer *wl_pointer, uint32_t time, uint32_t axis, wl_fixed_t value)
 {
     if (axis != WL_POINTER_AXIS_VERTICAL_SCROLL)
         return;
@@ -325,24 +317,18 @@ wl_pointer_axis(void *data, struct wl_pointer *wl_pointer,
 
     const double amount = wl_fixed_to_double(value);
 
-    if ((backend->aggregated_scroll > 0 && amount < 0) ||
-        (backend->aggregated_scroll < 0 && amount > 0))
-    {
+    if ((backend->aggregated_scroll > 0 && amount < 0) || (backend->aggregated_scroll < 0 && amount > 0)) {
         backend->aggregated_scroll = amount;
     } else
         backend->aggregated_scroll += amount;
 
-    enum mouse_button btn = backend->aggregated_scroll > 0
-        ? MOUSE_BTN_WHEEL_DOWN
-        : MOUSE_BTN_WHEEL_UP;
+    enum mouse_button btn = backend->aggregated_scroll > 0 ? MOUSE_BTN_WHEEL_DOWN : MOUSE_BTN_WHEEL_UP;
 
     const double step = bar->trackpad_sensitivity;
     const double adjust = backend->aggregated_scroll > 0 ? -step : step;
 
     while (fabs(backend->aggregated_scroll) >= step) {
-        backend->bar_on_mouse(
-            backend->bar, ON_MOUSE_CLICK, btn,
-            seat->pointer.x, seat->pointer.y);
+        backend->bar_on_mouse(backend->bar, ON_MOUSE_CLICK, btn, seat->pointer.x, seat->pointer.y);
         backend->aggregated_scroll += adjust;
     }
 }
@@ -356,14 +342,12 @@ wl_pointer_frame(void *data, struct wl_pointer *wl_pointer)
 }
 
 static void
-wl_pointer_axis_source(void *data, struct wl_pointer *wl_pointer,
-                       uint32_t axis_source)
+wl_pointer_axis_source(void *data, struct wl_pointer *wl_pointer, uint32_t axis_source)
 {
 }
 
 static void
-wl_pointer_axis_stop(void *data, struct wl_pointer *wl_pointer,
-                     uint32_t time, uint32_t axis)
+wl_pointer_axis_stop(void *data, struct wl_pointer *wl_pointer, uint32_t time, uint32_t axis)
 {
     if (axis != WL_POINTER_AXIS_VERTICAL_SCROLL)
         return;
@@ -374,8 +358,7 @@ wl_pointer_axis_stop(void *data, struct wl_pointer *wl_pointer,
 }
 
 static void
-wl_pointer_axis_discrete(void *data, struct wl_pointer *wl_pointer,
-                         uint32_t axis, int32_t discrete)
+wl_pointer_axis_discrete(void *data, struct wl_pointer *wl_pointer, uint32_t axis, int32_t discrete)
 {
     if (axis != WL_POINTER_AXIS_VERTICAL_SCROLL)
         return;
@@ -384,16 +367,12 @@ wl_pointer_axis_discrete(void *data, struct wl_pointer *wl_pointer,
     struct wayland_backend *backend = seat->backend;
     backend->have_discrete = true;
 
-    enum mouse_button btn = discrete > 0
-        ? MOUSE_BTN_WHEEL_DOWN
-        : MOUSE_BTN_WHEEL_UP;
+    enum mouse_button btn = discrete > 0 ? MOUSE_BTN_WHEEL_DOWN : MOUSE_BTN_WHEEL_UP;
 
     int count = abs(discrete);
 
     for (int32_t i = 0; i < count; i++) {
-        backend->bar_on_mouse(
-            backend->bar, ON_MOUSE_CLICK, btn,
-            seat->pointer.x, seat->pointer.y);
+        backend->bar_on_mouse(backend->bar, ON_MOUSE_CLICK, btn, seat->pointer.x, seat->pointer.y);
     }
 }
 
@@ -410,16 +389,14 @@ static const struct wl_pointer_listener pointer_listener = {
 };
 
 static void
-seat_handle_capabilities(void *data, struct wl_seat *wl_seat,
-                         enum wl_seat_capability caps)
+seat_handle_capabilities(void *data, struct wl_seat *wl_seat, enum wl_seat_capability caps)
 {
     struct seat *seat = data;
 
     if (caps & WL_SEAT_CAPABILITY_POINTER) {
         if (seat->wl_pointer == NULL) {
             assert(seat->pointer.surface == NULL);
-            seat->pointer.surface = wl_compositor_create_surface(
-                seat->backend->compositor);
+            seat->pointer.surface = wl_compositor_create_surface(seat->backend->compositor);
 
             if (seat->pointer.surface == NULL) {
                 LOG_ERR("%s: failed to create pointer surface", seat->name);
@@ -459,10 +436,8 @@ static const struct wl_seat_listener seat_listener = {
 };
 
 static void
-output_geometry(void *data, struct wl_output *wl_output, int32_t x, int32_t y,
-                int32_t physical_width, int32_t physical_height,
-                int32_t subpixel, const char *make, const char *model,
-                int32_t transform)
+output_geometry(void *data, struct wl_output *wl_output, int32_t x, int32_t y, int32_t physical_width,
+                int32_t physical_height, int32_t subpixel, const char *make, const char *model, int32_t transform)
 {
     struct monitor *mon = data;
     mon->width_mm = physical_width;
@@ -470,8 +445,7 @@ output_geometry(void *data, struct wl_output *wl_output, int32_t x, int32_t y,
 }
 
 static void
-output_mode(void *data, struct wl_output *wl_output, uint32_t flags,
-            int32_t width, int32_t height, int32_t refresh)
+output_mode(void *data, struct wl_output *wl_output, uint32_t flags, int32_t width, int32_t height, int32_t refresh)
 {
 }
 
@@ -516,8 +490,7 @@ output_name(void *data, struct wl_output *wl_output, const char *name)
 
 #if defined(WL_OUTPUT_DESCRIPTION_SINCE_VERSION)
 static void
-output_description(void *data, struct wl_output *wl_output,
-                   const char *description)
+output_description(void *data, struct wl_output *wl_output, const char *description)
 {
 }
 #endif
@@ -536,9 +509,7 @@ static const struct wl_output_listener output_listener = {
 };
 
 static void
-xdg_output_handle_logical_position(void *data,
-                                   struct zxdg_output_v1 *xdg_output,
-                                   int32_t x, int32_t y)
+xdg_output_handle_logical_position(void *data, struct zxdg_output_v1 *xdg_output, int32_t x, int32_t y)
 {
     struct monitor *mon = data;
     mon->x = x;
@@ -546,8 +517,7 @@ xdg_output_handle_logical_position(void *data,
 }
 
 static void
-xdg_output_handle_logical_size(void *data, struct zxdg_output_v1 *xdg_output,
-                               int32_t width, int32_t height)
+xdg_output_handle_logical_size(void *data, struct zxdg_output_v1 *xdg_output, int32_t width, int32_t height)
 {
     struct monitor *mon = data;
     mon->width_px = width;
@@ -562,9 +532,8 @@ xdg_output_handle_done(void *data, struct zxdg_output_v1 *xdg_output)
 {
     const struct monitor *mon = data;
 
-    LOG_INFO("monitor: %s: %dx%d+%d+%d (%dx%dmm)",
-             mon->name, mon->width_px, mon->height_px,
-             mon->x, mon->y, mon->width_mm, mon->height_mm);
+    LOG_INFO("monitor: %s: %dx%d+%d+%d (%dx%dmm)", mon->name, mon->width_px, mon->height_px, mon->x, mon->y,
+             mon->width_mm, mon->height_mm);
 
     struct wayland_backend *backend = mon->backend;
     struct private *bar = backend->bar->private;
@@ -576,15 +545,11 @@ xdg_output_handle_done(void *data, struct zxdg_output_v1 *xdg_output)
         return;
     }
 
-    const bool output_is_our_configured_monitor = (
-        bar->monitor != NULL &&
-        mon->name != NULL &&
-        strcmp(bar->monitor, mon->name) == 0);
+    const bool output_is_our_configured_monitor
+        = (bar->monitor != NULL && mon->name != NULL && strcmp(bar->monitor, mon->name) == 0);
 
-    const bool output_is_last_mapped = (
-        backend->last_mapped_monitor != NULL &&
-        mon->name != NULL &&
-        strcmp(backend->last_mapped_monitor, mon->name) == 0);
+    const bool output_is_last_mapped = (backend->last_mapped_monitor != NULL && mon->name != NULL
+                                        && strcmp(backend->last_mapped_monitor, mon->name) == 0);
 
     if (output_is_our_configured_monitor)
         LOG_DBG("%s: using this monitor (user configured)", mon->name);
@@ -606,8 +571,7 @@ xdg_output_handle_done(void *data, struct zxdg_output_v1 *xdg_output)
 }
 
 static void
-xdg_output_handle_name(void *data, struct zxdg_output_v1 *xdg_output,
-                       const char *name)
+xdg_output_handle_name(void *data, struct zxdg_output_v1 *xdg_output, const char *name)
 {
     struct monitor *mon = data;
     free(mon->name);
@@ -615,8 +579,7 @@ xdg_output_handle_name(void *data, struct zxdg_output_v1 *xdg_output,
 }
 
 static void
-xdg_output_handle_description(void *data, struct zxdg_output_v1 *xdg_output,
-                              const char *description)
+xdg_output_handle_description(void *data, struct zxdg_output_v1 *xdg_output, const char *description)
 {
 }
 
@@ -634,14 +597,12 @@ verify_iface_version(const char *iface, uint32_t version, uint32_t wanted)
     if (version >= wanted)
         return true;
 
-    LOG_ERR("%s: need interface version %u, but compositor only implements %u",
-            iface, wanted, version);
+    LOG_ERR("%s: need interface version %u, but compositor only implements %u", iface, wanted, version);
     return false;
 }
 
 static void
-handle_global(void *data, struct wl_registry *registry,
-              uint32_t name, const char *interface, uint32_t version)
+handle_global(void *data, struct wl_registry *registry, uint32_t name, const char *interface, uint32_t version)
 {
     LOG_DBG("global: 0x%08x, interface=%s, version=%u", name, interface, version);
     struct wayland_backend *backend = data;
@@ -651,8 +612,7 @@ handle_global(void *data, struct wl_registry *registry,
         if (!verify_iface_version(interface, version, required))
             return;
 
-        backend->compositor = wl_registry_bind(
-            registry, name, &wl_compositor_interface, required);
+        backend->compositor = wl_registry_bind(registry, name, &wl_compositor_interface, required);
     }
 
     else if (strcmp(interface, wl_shm_interface.name) == 0) {
@@ -660,8 +620,7 @@ handle_global(void *data, struct wl_registry *registry,
         if (!verify_iface_version(interface, version, required))
             return;
 
-        backend->shm = wl_registry_bind(
-            registry, name, &wl_shm_interface, required);
+        backend->shm = wl_registry_bind(registry, name, &wl_shm_interface, required);
         wl_shm_add_listener(backend->shm, &shm_listener, backend);
     }
 
@@ -670,13 +629,9 @@ handle_global(void *data, struct wl_registry *registry,
         if (!verify_iface_version(interface, version, required))
             return;
 
-        struct wl_output *output = wl_registry_bind(
-            registry, name, &wl_output_interface, required);
+        struct wl_output *output = wl_registry_bind(registry, name, &wl_output_interface, required);
 
-        tll_push_back(backend->monitors, ((struct monitor){
-                    .backend  = backend,
-                    .wl_name = name,
-                    .output = output}));
+        tll_push_back(backend->monitors, ((struct monitor){.backend = backend, .wl_name = name, .output = output}));
 
         struct monitor *mon = &tll_back(backend->monitors);
         wl_output_add_listener(output, &output_listener, mon);
@@ -689,8 +644,7 @@ handle_global(void *data, struct wl_registry *registry,
 
         assert(backend->xdg_output_manager != NULL);
         if (backend->xdg_output_manager != NULL) {
-            mon->xdg = zxdg_output_manager_v1_get_xdg_output(
-                backend->xdg_output_manager, mon->output);
+            mon->xdg = zxdg_output_manager_v1_get_xdg_output(backend->xdg_output_manager, mon->output);
 
             zxdg_output_v1_add_listener(mon->xdg, &xdg_output_listener, mon);
         }
@@ -701,8 +655,7 @@ handle_global(void *data, struct wl_registry *registry,
         if (!verify_iface_version(interface, version, required))
             return;
 
-        backend->layer_shell = wl_registry_bind(
-            registry, name, &zwlr_layer_shell_v1_interface, required);
+        backend->layer_shell = wl_registry_bind(registry, name, &zwlr_layer_shell_v1_interface, required);
     }
 
     else if (strcmp(interface, wl_seat_interface.name) == 0) {
@@ -710,12 +663,10 @@ handle_global(void *data, struct wl_registry *registry,
         if (!verify_iface_version(interface, version, required))
             return;
 
-        struct wl_seat *seat = wl_registry_bind(
-            registry, name, &wl_seat_interface, required);
+        struct wl_seat *seat = wl_registry_bind(registry, name, &wl_seat_interface, required);
         assert(seat != NULL);
 
-        tll_push_back(
-            backend->seats, ((struct seat){.backend = backend, .seat = seat, .id = name}));
+        tll_push_back(backend->seats, ((struct seat){.backend = backend, .seat = seat, .id = name}));
 
         wl_seat_add_listener(seat, &seat_listener, &tll_back(backend->seats));
     }
@@ -725,8 +676,7 @@ handle_global(void *data, struct wl_registry *registry,
         if (!verify_iface_version(interface, version, required))
             return;
 
-        backend->xdg_output_manager = wl_registry_bind(
-            registry, name, &zxdg_output_manager_v1_interface, required);
+        backend->xdg_output_manager = wl_registry_bind(registry, name, &zxdg_output_manager_v1_interface, required);
     }
 }
 
@@ -735,7 +685,8 @@ handle_global_remove(void *data, struct wl_registry *registry, uint32_t name)
 {
     struct wayland_backend *backend = data;
 
-    tll_foreach(backend->seats, it) {
+    tll_foreach(backend->seats, it)
+    {
         if (it->item.id == name) {
             if (backend->active_seat == &it->item)
                 backend->active_seat = NULL;
@@ -745,7 +696,8 @@ handle_global_remove(void *data, struct wl_registry *registry, uint32_t name)
         }
     }
 
-    tll_foreach(backend->monitors, it) {
+    tll_foreach(backend->monitors, it)
+    {
         struct monitor *mon = &it->item;
         if (mon->wl_name == name) {
             LOG_INFO("%s disconnected/disabled", mon->name);
@@ -770,8 +722,7 @@ static const struct wl_registry_listener registry_listener = {
 };
 
 static void
-layer_surface_configure(void *data, struct zwlr_layer_surface_v1 *surface,
-                        uint32_t serial, uint32_t w, uint32_t h)
+layer_surface_configure(void *data, struct zwlr_layer_surface_v1 *surface, uint32_t serial, uint32_t w, uint32_t h)
 {
     struct wayland_backend *backend = data;
     backend->width = w * backend->scale;
@@ -814,7 +765,6 @@ create_surface(struct wayland_backend *backend)
 
     wl_surface_add_listener(backend->surface, &surface_listener, backend);
 
-
     enum zwlr_layer_shell_v1_layer layer;
 
     switch (bar->layer) {
@@ -836,28 +786,22 @@ create_surface(struct wayland_backend *backend)
     }
 
     backend->layer_surface = zwlr_layer_shell_v1_get_layer_surface(
-        backend->layer_shell, backend->surface,
-        backend->monitor != NULL ? backend->monitor->output : NULL,
-        layer, "panel");
+        backend->layer_shell, backend->surface, backend->monitor != NULL ? backend->monitor->output : NULL, layer,
+        "panel");
 
     if (backend->layer_surface == NULL) {
         LOG_ERR("failed to create layer shell surface");
         return false;
     }
 
-    zwlr_layer_surface_v1_add_listener(
-        backend->layer_surface, &layer_surface_listener, backend);
+    zwlr_layer_surface_v1_add_listener(backend->layer_surface, &layer_surface_listener, backend);
 
     /* Aligned to top, maximum width */
-    enum zwlr_layer_surface_v1_anchor top_or_bottom = bar->location == BAR_TOP
-        ? ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP
-        : ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;
+    enum zwlr_layer_surface_v1_anchor top_or_bottom
+        = bar->location == BAR_TOP ? ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP : ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;
 
-    zwlr_layer_surface_v1_set_anchor(
-        backend->layer_surface,
-        ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT |
-        ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT |
-        top_or_bottom);
+    zwlr_layer_surface_v1_set_anchor(backend->layer_surface, ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT
+                                                                 | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT | top_or_bottom);
 
     return true;
 }
@@ -890,7 +834,7 @@ destroy_surface(struct wayland_backend *backend)
 static void
 buffer_release(void *data, struct wl_buffer *wl_buffer)
 {
-    //printf("buffer release\n");
+    // printf("buffer release\n");
     struct buffer *buffer = data;
     assert(buffer->busy);
     buffer->busy = false;
@@ -903,7 +847,8 @@ static const struct wl_buffer_listener buffer_listener = {
 static struct buffer *
 get_buffer(struct wayland_backend *backend)
 {
-    tll_foreach(backend->buffers, it) {
+    tll_foreach(backend->buffers, it)
+    {
         if (!it->item.busy && it->item.width == backend->width && it->item.height == backend->height) {
             it->item.busy = true;
             return &it->item;
@@ -936,13 +881,10 @@ get_buffer(struct wayland_backend *backend)
      * *with* it, and if that fails, try again *without* it.
      */
     errno = 0;
-    pool_fd = memfd_create(
-        "yambar-wayland-shm-buffer-pool",
-        MFD_CLOEXEC | MFD_ALLOW_SEALING | MFD_NOEXEC_SEAL);
+    pool_fd = memfd_create("yambar-wayland-shm-buffer-pool", MFD_CLOEXEC | MFD_ALLOW_SEALING | MFD_NOEXEC_SEAL);
 
     if (pool_fd < 0 && errno == EINVAL) {
-        pool_fd = memfd_create(
-            "yambar-wayland-shm-buffer-pool", MFD_CLOEXEC | MFD_ALLOW_SEALING);
+        pool_fd = memfd_create("yambar-wayland-shm-buffer-pool", MFD_CLOEXEC | MFD_ALLOW_SEALING);
     }
 #elif defined(__FreeBSD__)
     // memfd_create on FreeBSD 13 is SHM_ANON without sealing support
@@ -958,8 +900,7 @@ get_buffer(struct wayland_backend *backend)
     }
 
     /* Total size */
-    const uint32_t stride = stride_for_format_and_width(
-        PIXMAN_a8r8g8b8, backend->width);
+    const uint32_t stride = stride_for_format_and_width(PIXMAN_a8r8g8b8, backend->width);
 
     size = stride * backend->height;
     if (ftruncate(pool_fd, size) == -1) {
@@ -976,9 +917,7 @@ get_buffer(struct wayland_backend *backend)
 #if defined(MEMFD_CREATE)
     /* Seal file - we no longer allow any kind of resizing */
     /* TODO: wayland mmaps(PROT_WRITE), for some unknown reason, hence we cannot use F_SEAL_FUTURE_WRITE */
-    if (fcntl(pool_fd, F_ADD_SEALS,
-              F_SEAL_GROW | F_SEAL_SHRINK | /*F_SEAL_FUTURE_WRITE |*/ F_SEAL_SEAL) < 0)
-    {
+    if (fcntl(pool_fd, F_ADD_SEALS, F_SEAL_GROW | F_SEAL_SHRINK | /*F_SEAL_FUTURE_WRITE |*/ F_SEAL_SEAL) < 0) {
         LOG_ERRNO("failed to seal SHM backing memory file");
         /* This is not a fatal error */
     }
@@ -990,37 +929,35 @@ get_buffer(struct wayland_backend *backend)
         goto err;
     }
 
-    buf = wl_shm_pool_create_buffer(
-        pool, 0, backend->width, backend->height, stride, WL_SHM_FORMAT_ARGB8888);
+    buf = wl_shm_pool_create_buffer(pool, 0, backend->width, backend->height, stride, WL_SHM_FORMAT_ARGB8888);
     if (buf == NULL) {
         LOG_ERR("failed to create SHM buffer");
         goto err;
     }
 
     /* We use the entire pool for our single buffer */
-    wl_shm_pool_destroy(pool); pool = NULL;
-    close(pool_fd); pool_fd = -1;
+    wl_shm_pool_destroy(pool);
+    pool = NULL;
+    close(pool_fd);
+    pool_fd = -1;
 
-    pix = pixman_image_create_bits_no_clear(
-        PIXMAN_a8r8g8b8, backend->width, backend->height, (uint32_t *)mmapped, stride);
+    pix = pixman_image_create_bits_no_clear(PIXMAN_a8r8g8b8, backend->width, backend->height, (uint32_t *)mmapped,
+                                            stride);
     if (pix == NULL) {
         LOG_ERR("failed to create pixman image");
         goto err;
     }
 
     /* Push to list of available buffers, but marked as 'busy' */
-    tll_push_back(
-        backend->buffers,
-        ((struct buffer){
-            .busy = true,
-            .width = backend->width,
-            .height = backend->height,
-            .size = size,
-            .mmapped = mmapped,
-            .wl_buf = buf,
-            .pix = pix,
-            })
-        );
+    tll_push_back(backend->buffers, ((struct buffer){
+                                        .busy = true,
+                                        .width = backend->width,
+                                        .height = backend->height,
+                                        .size = size,
+                                        .mmapped = mmapped,
+                                        .wl_buf = buf,
+                                        .pix = pix,
+                                    }));
 
     struct buffer *ret = &tll_back(backend->buffers);
     wl_buffer_add_listener(ret->wl_buf, &buffer_listener, ret);
@@ -1050,7 +987,8 @@ guess_scale(const struct wayland_backend *backend)
     bool all_have_same_scale = true;
     int last_scale = -1;
 
-    tll_foreach(backend->monitors, it) {
+    tll_foreach(backend->monitors, it)
+    {
         if (last_scale == -1)
             last_scale = it->item.scale;
         else if (last_scale != it->item.scale) {
@@ -1086,29 +1024,21 @@ update_size(struct wayland_backend *backend)
     bar->height = height - bar->border.top_width - bar->border.bottom_width;
     bar->height_with_border = height;
 
-    zwlr_layer_surface_v1_set_size(
-        backend->layer_surface, 0, bar->height_with_border / scale);
+    zwlr_layer_surface_v1_set_size(backend->layer_surface, 0, bar->height_with_border / scale);
     zwlr_layer_surface_v1_set_exclusive_zone(
         backend->layer_surface,
-        (bar->height_with_border + (bar->location == BAR_TOP
-                                    ? bar->border.bottom_margin
-                                    : bar->border.top_margin))
-        / scale);
+        (bar->height_with_border + (bar->location == BAR_TOP ? bar->border.bottom_margin : bar->border.top_margin))
+            / scale);
 
-    zwlr_layer_surface_v1_set_margin(
-        backend->layer_surface,
-        bar->border.top_margin / scale,
-        bar->border.right_margin / scale,
-        bar->border.bottom_margin / scale,
-        bar->border.left_margin / scale
-        );
+    zwlr_layer_surface_v1_set_margin(backend->layer_surface, bar->border.top_margin / scale,
+                                     bar->border.right_margin / scale, bar->border.bottom_margin / scale,
+                                     bar->border.left_margin / scale);
 
     /* Trigger a 'configure' event, after which we'll have the width */
     wl_surface_commit(backend->surface);
     wl_display_roundtrip(backend->display);
 
-    if (backend->width == -1 ||
-        backend->height != bar->height_with_border) {
+    if (backend->width == -1 || backend->height != bar->height_with_border) {
         LOG_ERR("failed to get panel width");
         return false;
     }
@@ -1178,8 +1108,7 @@ setup(struct bar *_bar)
             return false;
     }
 
-    assert(backend->monitor == NULL ||
-           backend->width / backend->monitor->scale <= backend->monitor->width_px);
+    assert(backend->monitor == NULL || backend->width / backend->monitor->scale <= backend->monitor->width_px);
 
     if (pipe2(backend->pipe_fds, O_CLOEXEC | O_NONBLOCK) == -1) {
         LOG_ERRNO("failed to create pipe");
@@ -1201,7 +1130,8 @@ cleanup(struct bar *_bar)
     if (backend->pipe_fds[1] >= 0)
         close(backend->pipe_fds[1]);
 
-    tll_foreach(backend->monitors, it) {
+    tll_foreach(backend->monitors, it)
+    {
         struct monitor *mon = &it->item;
         free(mon->name);
 
@@ -1216,13 +1146,13 @@ cleanup(struct bar *_bar)
     if (backend->xdg_output_manager != NULL)
         zxdg_output_manager_v1_destroy(backend->xdg_output_manager);
 
-    tll_foreach(backend->seats, it)
-        seat_destroy(&it->item);
+    tll_foreach(backend->seats, it) seat_destroy(&it->item);
     tll_free(backend->seats);
 
     destroy_surface(backend);
 
-    tll_foreach(backend->buffers, it) {
+    tll_foreach(backend->buffers, it)
+    {
         if (it->item.wl_buf != NULL)
             wl_buffer_destroy(it->item.wl_buf);
         if (it->item.pix != NULL)
@@ -1247,14 +1177,11 @@ cleanup(struct bar *_bar)
 
     /* Destroyed when freeing buffer list */
     bar->pix = NULL;
-
 }
 
 static void
-loop(struct bar *_bar,
-     void (*expose)(const struct bar *bar),
-     void (*on_mouse)(struct bar *bar, enum mouse_event event,
-                      enum mouse_button btn, int x, int y))
+loop(struct bar *_bar, void (*expose)(const struct bar *bar),
+     void (*on_mouse)(struct bar *bar, enum mouse_event event, enum mouse_button btn, int x, int y))
 {
     struct private *bar = _bar->private;
     struct wayland_backend *backend = bar->backend.data;
@@ -1341,25 +1268,23 @@ out:
     if (!send_abort_to_modules)
         return;
 
-    if (write(_bar->abort_fd, &(uint64_t){1}, sizeof(uint64_t))
-        != sizeof(uint64_t))
-    {
+    if (write(_bar->abort_fd, &(uint64_t){1}, sizeof(uint64_t)) != sizeof(uint64_t)) {
         LOG_ERRNO("failed to signal abort to modules");
     }
 
-    //wl_display_cancel_read(backend->display);
+    // wl_display_cancel_read(backend->display);
 }
 
 static void
-surface_enter(void *data, struct wl_surface *wl_surface,
-              struct wl_output *wl_output)
+surface_enter(void *data, struct wl_surface *wl_surface, struct wl_output *wl_output)
 {
     struct wayland_backend *backend = data;
 
     free(backend->last_mapped_monitor);
     backend->last_mapped_monitor = NULL;
 
-    tll_foreach(backend->monitors, it) {
+    tll_foreach(backend->monitors, it)
+    {
         struct monitor *mon = &it->item;
 
         if (mon->output != wl_output)
@@ -1379,8 +1304,7 @@ surface_enter(void *data, struct wl_surface *wl_surface,
 }
 
 static void
-surface_leave(void *data, struct wl_surface *wl_surface,
-              struct wl_output *wl_output)
+surface_leave(void *data, struct wl_surface *wl_surface, struct wl_output *wl_output)
 {
     struct wayland_backend *backend = data;
     const struct monitor *mon = backend->monitor;
@@ -1399,8 +1323,7 @@ static const struct wl_surface_listener surface_listener = {
     .leave = &surface_leave,
 };
 
-static void frame_callback(
-    void *data, struct wl_callback *wl_callback, uint32_t callback_data);
+static void frame_callback(void *data, struct wl_callback *wl_callback, uint32_t callback_data);
 
 static const struct wl_callback_listener frame_listener = {
     .done = &frame_callback,
@@ -1409,7 +1332,7 @@ static const struct wl_callback_listener frame_listener = {
 static void
 frame_callback(void *data, struct wl_callback *wl_callback, uint32_t callback_data)
 {
-    //printf("frame callback\n");
+    // printf("frame callback\n");
     struct private *bar = data;
     struct wayland_backend *backend = bar->backend.data;
 
@@ -1436,7 +1359,7 @@ frame_callback(void *data, struct wl_callback *wl_callback, uint32_t callback_da
         backend->pending_buffer = NULL;
         backend->render_scheduled = true;
     } else
-        ;//printf("nothing more to do\n");
+        ; // printf("nothing more to do\n");
 }
 
 static void
@@ -1445,7 +1368,7 @@ commit(const struct bar *_bar)
     struct private *bar = _bar->private;
     struct wayland_backend *backend = bar->backend.data;
 
-    //printf("commit: %dxl%d\n", backend->width, backend->height);
+    // printf("commit: %dxl%d\n", backend->width, backend->height);
 
     if (backend->next_buffer == NULL)
         return;
@@ -1454,7 +1377,7 @@ commit(const struct bar *_bar)
     assert(backend->next_buffer->busy);
 
     if (backend->render_scheduled) {
-        //printf("already scheduled\n");
+        // printf("already scheduled\n");
 
         if (backend->pending_buffer != NULL)
             backend->pending_buffer->busy = false;
@@ -1463,7 +1386,7 @@ commit(const struct bar *_bar)
         backend->next_buffer = NULL;
     } else {
 
-        //printf("scheduling new frame callback\n");
+        // printf("scheduling new frame callback\n");
         struct buffer *buffer = backend->next_buffer;
         assert(buffer->busy);
 
@@ -1491,9 +1414,7 @@ refresh(const struct bar *_bar)
     const struct private *bar = _bar->private;
     const struct wayland_backend *backend = bar->backend.data;
 
-    if (write(backend->pipe_fds[1], &(uint8_t){1}, sizeof(uint8_t))
-        != sizeof(uint8_t))
-    {
+    if (write(backend->pipe_fds[1], &(uint8_t){1}, sizeof(uint8_t)) != sizeof(uint8_t)) {
         LOG_ERRNO("failed to signal 'refresh' to main thread");
     }
 }
@@ -1513,8 +1434,7 @@ set_cursor(struct bar *_bar, const char *cursor)
 
     seat->pointer.xcursor = cursor;
 
-    seat->pointer.cursor = wl_cursor_theme_get_cursor(
-        seat->pointer.theme, cursor);
+    seat->pointer.cursor = wl_cursor_theme_get_cursor(seat->pointer.theme, cursor);
 
     if (seat->pointer.cursor == NULL) {
         LOG_ERR("%s: failed to load cursor '%s'", seat->name, cursor);

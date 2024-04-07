@@ -1,33 +1,34 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <inttypes.h>
-#include <time.h>
-#include <threads.h>
-#include <unistd.h>
 #include <assert.h>
 #include <errno.h>
+#include <inttypes.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <threads.h>
+#include <time.h>
+#include <unistd.h>
 
-#include <poll.h>
 #include <libgen.h>
+#include <poll.h>
 
-#include <sys/stat.h>
-#include <sys/socket.h>
-#include <sys/un.h>
 #include <sys/eventfd.h>
 #include <sys/inotify.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/un.h>
 
 #include <mpd/client.h>
 
 #define LOG_MODULE "mpd"
 #define LOG_ENABLE_DBG 0
-#include "../log.h"
 #include "../bar/bar.h"
-#include "../config.h"
 #include "../config-verify.h"
+#include "../config.h"
+#include "../log.h"
 #include "../plugin.h"
 
-struct private {
+struct private
+{
     char *host;
     uint16_t port;
     struct particle *label;
@@ -38,7 +39,7 @@ struct private {
     bool repeat;
     bool random;
     bool consume;
-    int  volume;
+    int volume;
     char *album;
     char *artist;
     char *title;
@@ -60,11 +61,9 @@ destroy(struct module *mod)
     struct private *m = mod->private;
     if (m->refresh_thread_id != 0) {
         assert(m->refresh_abort_fd != -1);
-        if (write(m->refresh_abort_fd, &(uint64_t){1}, sizeof(uint64_t))
-            != sizeof(uint64_t))
-        {
+        if (write(m->refresh_abort_fd, &(uint64_t){1}, sizeof(uint64_t)) != sizeof(uint64_t)) {
             LOG_ERRNO("failed to signal abort to refresher thread");
-        } else{
+        } else {
             int res;
             thrd_join(m->refresh_thread_id, &res);
         }
@@ -132,12 +131,11 @@ content(struct module *mod)
     if (m->state == MPD_STATE_PLAY) {
         elapsed += timespec_diff_milli_seconds(&now, &m->elapsed.when);
         if (elapsed > m->duration) {
-            LOG_DBG(
-                "dynamic update of elapsed overflowed: "
-                "elapsed=%"PRIu64", duration=%"PRIu64, elapsed, m->duration);
+            LOG_DBG("dynamic update of elapsed overflowed: "
+                    "elapsed=%" PRIu64 ", duration=%" PRIu64,
+                    elapsed, m->duration);
             elapsed = m->duration;
         }
-
     }
 
     unsigned elapsed_secs = elapsed / 1000;
@@ -154,16 +152,23 @@ content(struct module *mod)
         state_str = "offline";
     else {
         switch (m->state) {
-        case MPD_STATE_UNKNOWN: state_str = "unknown"; break;
-        case MPD_STATE_STOP:    state_str = "stopped"; break;
-        case MPD_STATE_PAUSE:   state_str = "paused"; break;
-        case MPD_STATE_PLAY:    state_str = "playing"; break;
+        case MPD_STATE_UNKNOWN:
+            state_str = "unknown";
+            break;
+        case MPD_STATE_STOP:
+            state_str = "stopped";
+            break;
+        case MPD_STATE_PAUSE:
+            state_str = "paused";
+            break;
+        case MPD_STATE_PLAY:
+            state_str = "playing";
+            break;
         }
     }
 
     /* Tell particle to real-time track? */
-    enum tag_realtime_unit realtime = m->state == MPD_STATE_PLAY
-        ? TAG_REALTIME_MSECS : TAG_REALTIME_NONE;
+    enum tag_realtime_unit realtime = m->state == MPD_STATE_PLAY ? TAG_REALTIME_MSECS : TAG_REALTIME_NONE;
 
     struct tag_set tags = {
         .tags = (struct tag *[]){
@@ -237,8 +242,7 @@ wait_for_socket_create(const struct module *mod)
             LOG_DBG("%s: already exists, and is connectable", m->host);
             have_mpd_socket = true;
         } else {
-            LOG_DBG("%s: already exists, but isn't connectable: %s",
-                    m->host, strerror(errno));
+            LOG_DBG("%s: already exists, but isn't connectable: %s", m->host, strerror(errno));
         }
 
         close(s);
@@ -249,10 +253,7 @@ wait_for_socket_create(const struct module *mod)
 
     bool ret = false;
     while (!have_mpd_socket) {
-        struct pollfd fds[] = {
-            {.fd = mod->abort_fd, .events = POLLIN},
-            {.fd = fd, .events = POLLIN}
-        };
+        struct pollfd fds[] = {{.fd = mod->abort_fd, .events = POLLIN}, {.fd = fd, .events = POLLIN}};
 
         if (poll(fds, sizeof(fds) / sizeof(fds[0]), -1) < 0) {
             if (errno == EINTR)
@@ -272,7 +273,7 @@ wait_for_socket_create(const struct module *mod)
         char buf[1024];
         ssize_t len = read(fd, buf, sizeof(buf));
 
-        for (const char *ptr = buf; ptr < buf + len; ) {
+        for (const char *ptr = buf; ptr < buf + len;) {
             const struct inotify_event *e = (const struct inotify_event *)ptr;
             LOG_DBG("inotify: CREATED: %s/%.*s", directory, e->len, e->name);
 
@@ -282,7 +283,7 @@ wait_for_socket_create(const struct module *mod)
                 break;
             }
 
-             ptr += sizeof(*e) + e->len;
+            ptr += sizeof(*e) + e->len;
         }
     }
 
@@ -305,8 +306,7 @@ connect_to_mpd(const struct module *mod)
 
     enum mpd_error merr = mpd_connection_get_error(conn);
     if (merr != MPD_ERROR_SUCCESS) {
-        LOG_WARN("failed to connect to MPD: %s",
-                 mpd_connection_get_error_message(conn));
+        LOG_WARN("failed to connect to MPD: %s", mpd_connection_get_error_message(conn));
         mpd_connection_free(conn);
         return NULL;
     }
@@ -324,8 +324,7 @@ update_status(struct module *mod)
 
     struct mpd_status *status = mpd_run_status(m->conn);
     if (status == NULL) {
-        LOG_ERR("failed to get status: %s",
-                mpd_connection_get_error_message(m->conn));
+        LOG_ERR("failed to get status: %s", mpd_connection_get_error_message(m->conn));
         return false;
     }
 
@@ -347,17 +346,20 @@ update_status(struct module *mod)
 
     struct mpd_song *song = mpd_run_current_song(m->conn);
     if (song == NULL && mpd_connection_get_error(m->conn) != MPD_ERROR_SUCCESS) {
-        LOG_ERR("failed to get current song: %s",
-                mpd_connection_get_error_message(m->conn));
+        LOG_ERR("failed to get current song: %s", mpd_connection_get_error_message(m->conn));
         return false;
     }
 
     if (song == NULL) {
         mtx_lock(&mod->lock);
-        free(m->album); m->album = NULL;
-        free(m->artist); m->artist = NULL;
-        free(m->title); m->title = NULL;
-        free(m->file); m->file = NULL;
+        free(m->album);
+        m->album = NULL;
+        free(m->artist);
+        m->artist = NULL;
+        free(m->title);
+        m->title = NULL;
+        free(m->file);
+        m->file = NULL;
         mtx_unlock(&mod->lock);
     } else {
         const char *album = mpd_song_get_tag(song, MPD_TAG_ALBUM, 0);
@@ -401,10 +403,14 @@ run(struct module *mod)
 
         /* Reset state */
         mtx_lock(&mod->lock);
-        free(m->album); m->album = NULL;
-        free(m->artist); m->artist = NULL;
-        free(m->title); m->title = NULL;
-        free(m->file); m->file = NULL;
+        free(m->album);
+        m->album = NULL;
+        free(m->artist);
+        m->artist = NULL;
+        free(m->title);
+        m->title = NULL;
+        free(m->file);
+        m->file = NULL;
         m->state = MPD_STATE_UNKNOWN;
         m->elapsed.value = m->duration = 0;
         m->elapsed.when.tv_sec = m->elapsed.when.tv_nsec = 0;
@@ -467,8 +473,7 @@ run(struct module *mod)
             };
 
             if (!mpd_send_idle(m->conn)) {
-                LOG_ERR("failed to send IDLE command: %s",
-                        mpd_connection_get_error_message(m->conn));
+                LOG_ERR("failed to send IDLE command: %s", mpd_connection_get_error_message(m->conn));
                 break;
             }
 
@@ -492,8 +497,7 @@ run(struct module *mod)
             }
 
             if (fds[1].revents & POLLIN) {
-                enum mpd_idle idle __attribute__ ((unused)) =
-                    mpd_recv_idle(m->conn, true);
+                enum mpd_idle idle __attribute__((unused)) = mpd_recv_idle(m->conn, true);
 
                 LOG_DBG("IDLE mask: %d", idle);
 
@@ -565,9 +569,7 @@ refresh_in(struct module *mod, long milli_seconds)
 
         /* Signal abort to thread */
         assert(m->refresh_abort_fd != -1);
-        if (write(m->refresh_abort_fd, &(uint64_t){1}, sizeof(uint64_t))
-            != sizeof(uint64_t))
-        {
+        if (write(m->refresh_abort_fd, &(uint64_t){1}, sizeof(uint64_t)) != sizeof(uint64_t)) {
             LOG_ERRNO("failed to signal abort to refresher thread");
             return false;
         }
@@ -607,7 +609,7 @@ refresh_in(struct module *mod, long milli_seconds)
     }
 
     /* Detach - we don't want to have to thrd_join() it */
-    //thrd_detach(tid);
+    // thrd_detach(tid);
     return r == 0;
 }
 
@@ -638,10 +640,8 @@ from_conf(const struct yml_node *node, struct conf_inherit inherited)
     const struct yml_node *port = yml_get_value(node, "port");
     const struct yml_node *c = yml_get_value(node, "content");
 
-    return mpd_new(
-        yml_value_as_string(host),
-        port != NULL ? yml_value_as_int(port) : 0,
-        conf_to_particle(c, inherited));
+    return mpd_new(yml_value_as_string(host), port != NULL ? yml_value_as_int(port) : 0,
+                   conf_to_particle(c, inherited));
 }
 
 static bool

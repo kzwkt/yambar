@@ -1,13 +1,13 @@
 #include "yml.h"
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <stdbool.h>
 #include <assert.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-#include <yaml.h>
 #include <tllist.h>
+#include <yaml.h>
 
 #define UNUSED __attribute__((unused))
 
@@ -78,7 +78,8 @@ clone_node(struct yml_node *parent, const struct yml_node *node)
         break;
 
     case DICT:
-        tll_foreach(node->dict.pairs, it) {
+        tll_foreach(node->dict.pairs, it)
+        {
             struct dict_pair p = {
                 .key = clone_node(clone, it->item.key),
                 .value = clone_node(clone, it->item.value),
@@ -88,8 +89,7 @@ clone_node(struct yml_node *parent, const struct yml_node *node)
         break;
 
     case LIST:
-        tll_foreach(node->list.values, it)
-            tll_push_back(clone->list.values, clone_node(clone, it->item));
+        tll_foreach(node->list.values, it) tll_push_back(clone->list.values, clone_node(clone, it->item));
         break;
 
     case ROOT:
@@ -119,7 +119,8 @@ dict_has_key(const struct yml_node *node, const struct yml_node *key)
 {
     assert(node->type == DICT);
 
-    tll_foreach(node->dict.pairs, pair) {
+    tll_foreach(node->dict.pairs, pair)
+    {
         if (node_equal(pair->item.key, key))
             return true;
     }
@@ -130,7 +131,7 @@ dict_has_key(const struct yml_node *node, const struct yml_node *key)
 static enum yml_error
 add_node(struct yml_node *parent, struct yml_node *new_node, yaml_mark_t loc)
 {
-    new_node->line = loc.line + 1;  /* yaml uses 0-based line numbers */
+    new_node->line = loc.line + 1; /* yaml uses 0-based line numbers */
     new_node->column = loc.column;
 
     switch (parent->type) {
@@ -168,8 +169,7 @@ add_node(struct yml_node *parent, struct yml_node *new_node, yaml_mark_t loc)
 }
 
 static void
-add_anchor(struct yml_node *root, const char *anchor,
-           const struct yml_node *node)
+add_anchor(struct yml_node *root, const char *anchor, const struct yml_node *node)
 {
     assert(root->type == ROOT);
 
@@ -190,25 +190,23 @@ post_process(struct yml_node *node, char **error)
         break;
 
     case SCALAR:
-        //assert(strcmp(node->scalar.value, "<<") != 0);
+        // assert(strcmp(node->scalar.value, "<<") != 0);
         break;
 
     case LIST:
-        tll_foreach(node->list.values, it)
-            if (!post_process(it->item, error))
-                return false;
+        tll_foreach(node->list.values, it) if (!post_process(it->item, error)) return false;
         break;
 
     case DICT:
-        tll_foreach(node->dict.pairs, it) {
-            if (!post_process(it->item.key, error) ||
-                !post_process(it->item.value, error))
-            {
+        tll_foreach(node->dict.pairs, it)
+        {
+            if (!post_process(it->item.key, error) || !post_process(it->item.value, error)) {
                 return false;
             }
         }
 
-        tll_foreach(node->dict.pairs, it) {
+        tll_foreach(node->dict.pairs, it)
+        {
             if (it->item.key->type != SCALAR)
                 continue;
 
@@ -220,19 +218,19 @@ post_process(struct yml_node *node, char **error)
                  * Merge value is a list (of dictionaries)
                  * e.g. <<: [*foo, *bar]
                  */
-                tll_foreach(it->item.value->list.values, v_it) {
+                tll_foreach(it->item.value->list.values, v_it)
+                {
                     if (v_it->item->type != DICT) {
-                        int cnt = snprintf(
-                            NULL, 0, "%zu:%zu: cannot merge non-dictionary anchor",
-                            v_it->item->line, v_it->item->column);
+                        int cnt = snprintf(NULL, 0, "%zu:%zu: cannot merge non-dictionary anchor", v_it->item->line,
+                                           v_it->item->column);
                         *error = malloc(cnt + 1);
-                        snprintf(
-                            *error, cnt + 1, "%zu:%zu: cannot merge non-dictionary anchor",
-                            v_it->item->line, v_it->item->column);
+                        snprintf(*error, cnt + 1, "%zu:%zu: cannot merge non-dictionary anchor", v_it->item->line,
+                                 v_it->item->column);
                         return false;
                     }
 
-                    tll_foreach(v_it->item->dict.pairs, vv_it) {
+                    tll_foreach(v_it->item->dict.pairs, vv_it)
+                    {
                         struct dict_pair p = {
                             .key = vv_it->item.key,
                             .value = vv_it->item.value,
@@ -261,17 +259,16 @@ post_process(struct yml_node *node, char **error)
                  * e.g. <<: *foo
                  */
                 if (it->item.value->type != DICT) {
-                    int cnt = snprintf(
-                        NULL, 0, "%zu:%zu: cannot merge non-dictionary anchor",
-                        it->item.value->line, it->item.value->column);
+                    int cnt = snprintf(NULL, 0, "%zu:%zu: cannot merge non-dictionary anchor", it->item.value->line,
+                                       it->item.value->column);
                     *error = malloc(cnt + 1);
-                    snprintf(
-                        *error, cnt + 1, "%zu:%zu: cannot merge non-dictionary anchor",
-                        it->item.value->line, it->item.value->column);
+                    snprintf(*error, cnt + 1, "%zu:%zu: cannot merge non-dictionary anchor", it->item.value->line,
+                             it->item.value->column);
                     return false;
                 }
 
-                tll_foreach(it->item.value->dict.pairs, v_it) {
+                tll_foreach(it->item.value->dict.pairs, v_it)
+                {
                     struct dict_pair p = {
                         .key = v_it->item.key,
                         .value = v_it->item.value,
@@ -307,10 +304,7 @@ post_process(struct yml_node *node, char **error)
 }
 
 static const char *
-format_error(enum yml_error err,
-             const struct yml_node *parent,
-             const struct yml_node *node,
-             const char *anchor)
+format_error(enum yml_error err, const struct yml_node *parent, const struct yml_node *node, const char *anchor)
 {
     static char err_str[512];
 
@@ -321,11 +315,9 @@ format_error(enum yml_error err,
 
     case YML_ERR_DUPLICATE_KEY: {
         /* Find parent's key (i.e its name) */
-        if (parent->parent != NULL &&
-            parent->parent->type == DICT &&
-            node->type == SCALAR)
-        {
-            tll_foreach(parent->parent->dict.pairs, pair) {
+        if (parent->parent != NULL && parent->parent->type == DICT && node->type == SCALAR) {
+            tll_foreach(parent->parent->dict.pairs, pair)
+            {
                 if (pair->item.value != parent)
                     continue;
 
@@ -335,17 +327,14 @@ format_error(enum yml_error err,
                 assert(pair->item.key->type == SCALAR);
                 assert(node->type == SCALAR);
 
-                snprintf(err_str, sizeof(err_str),
-                         "%s: duplicate key: '%s'",
-                         pair->item.key->scalar.value,
+                snprintf(err_str, sizeof(err_str), "%s: duplicate key: '%s'", pair->item.key->scalar.value,
                          node->scalar.value);
                 return err_str;
             }
         }
 
         if (node->type == SCALAR) {
-            snprintf(err_str, sizeof(err_str),
-                     "duplicate key: %s", node->scalar.value);
+            snprintf(err_str, sizeof(err_str), "duplicate key: %s", node->scalar.value);
         } else
             snprintf(err_str, sizeof(err_str), "duplicate key");
         break;
@@ -353,22 +342,20 @@ format_error(enum yml_error err,
 
     case YML_ERR_INVALID_ANCHOR:
         if (parent->parent != NULL && parent->parent->type == DICT) {
-            tll_foreach(parent->parent->dict.pairs, pair) {
+            tll_foreach(parent->parent->dict.pairs, pair)
+            {
                 if (pair->item.value != parent)
                     continue;
                 if (pair->item.key->type != SCALAR)
                     break;
 
-                snprintf(err_str, sizeof(err_str),
-                         "%s: invalid anchor: %s",
-                         pair->item.key->scalar.value,
+                snprintf(err_str, sizeof(err_str), "%s: invalid anchor: %s", pair->item.key->scalar.value,
                          anchor != NULL ? anchor : "<unknown>");
                 return err_str;
             }
         }
 
-        snprintf(err_str, sizeof(err_str), "invalid anchor: %s",
-                 anchor != NULL ? anchor : "<unknown>");
+        snprintf(err_str, sizeof(err_str), "invalid anchor: %s", anchor != NULL ? anchor : "<unknown>");
         break;
 
     case YML_ERR_UNKNOWN:
@@ -403,19 +390,12 @@ yml_load(FILE *yml, char **error)
         yaml_event_t event;
         if (!yaml_parser_parse(&yaml, &event)) {
             if (error != NULL) {
-                int cnt = snprintf(
-                    NULL, 0, "%zu:%zu: %s %s",
-                    yaml.problem_mark.line + 1,
-                    yaml.problem_mark.column,
-                    yaml.problem,
-                    yaml.context != NULL ? yaml.context : "");
+                int cnt = snprintf(NULL, 0, "%zu:%zu: %s %s", yaml.problem_mark.line + 1, yaml.problem_mark.column,
+                                   yaml.problem, yaml.context != NULL ? yaml.context : "");
 
                 *error = malloc(cnt + 1);
-                snprintf(*error, cnt + 1, "%zu:%zu: %s %s",
-                    yaml.problem_mark.line + 1,
-                    yaml.problem_mark.column,
-                    yaml.problem,
-                    yaml.context != NULL ? yaml.context : "");
+                snprintf(*error, cnt + 1, "%zu:%zu: %s %s", yaml.problem_mark.line + 1, yaml.problem_mark.column,
+                         yaml.problem, yaml.context != NULL ? yaml.context : "");
             }
 
             goto err_no_error_formatting;
@@ -466,9 +446,7 @@ yml_load(FILE *yml, char **error)
             }
 
             if (!got_match) {
-                error_str = format_error(
-                    YML_ERR_INVALID_ANCHOR, n, NULL,
-                    (const char *)event.data.alias.anchor);
+                error_str = format_error(YML_ERR_INVALID_ANCHOR, n, NULL, (const char *)event.data.alias.anchor);
                 yaml_event_delete(&event);
                 goto err;
             }
@@ -478,8 +456,7 @@ yml_load(FILE *yml, char **error)
         case YAML_SCALAR_EVENT: {
             struct yml_node *new_scalar = calloc(1, sizeof(*new_scalar));
             new_scalar->type = SCALAR;
-            new_scalar->scalar.value = strndup(
-                (const char*)event.data.scalar.value, event.data.scalar.length);
+            new_scalar->scalar.value = strndup((const char *)event.data.scalar.value, event.data.scalar.length);
 
             enum yml_error err = add_node(n, new_scalar, event.start_mark);
             if (err != YML_ERR_NONE) {
@@ -569,23 +546,13 @@ yml_load(FILE *yml, char **error)
 
 err:
     if (error_str != NULL) {
-        int cnt = snprintf(
-            NULL, 0, "%zu:%zu: %s",
-            yaml.mark.line + 1,
-            yaml.mark.column,
-            error_str);
+        int cnt = snprintf(NULL, 0, "%zu:%zu: %s", yaml.mark.line + 1, yaml.mark.column, error_str);
         *error = malloc(cnt + 1);
-        snprintf(
-            *error, cnt + 1, "%zu:%zu: %s",
-            yaml.mark.line + 1,
-            yaml.mark.column,
-            error_str);
+        snprintf(*error, cnt + 1, "%zu:%zu: %s", yaml.mark.line + 1, yaml.mark.column, error_str);
     } else {
-        int cnt = snprintf(NULL, 0, "%zu:%zu: unknown error",
-                           yaml.mark.line + 1, yaml.mark.column);
+        int cnt = snprintf(NULL, 0, "%zu:%zu: unknown error", yaml.mark.line + 1, yaml.mark.column);
         *error = malloc(cnt + 1);
-        snprintf(*error, cnt + 1, "%zu:%zu: unknown error",
-                 yaml.mark.line + 1, yaml.mark.column);
+        snprintf(*error, cnt + 1, "%zu:%zu: unknown error", yaml.mark.line + 1, yaml.mark.column);
     }
 
 err_no_error_formatting:
@@ -617,7 +584,8 @@ yml_destroy(struct yml_node *node)
         break;
 
     case DICT:
-        tll_foreach(node->dict.pairs, it) {
+        tll_foreach(node->dict.pairs, it)
+        {
             yml_destroy(it->item.key);
             yml_destroy(it->item.value);
         }
@@ -659,13 +627,12 @@ yml_get_(struct yml_node const *node, char const *_path, bool value)
 
     char *path = strdup(_path);
 
-    for (const char *part = strtok(path, "."), *next_part = strtok(NULL, ".");
-         part != NULL;
-         part = next_part, next_part = strtok(NULL, "."))
-    {
+    for (const char *part = strtok(path, "."), *next_part = strtok(NULL, "."); part != NULL;
+         part = next_part, next_part = strtok(NULL, ".")) {
         assert(yml_is_dict(node));
 
-        tll_foreach(node->dict.pairs, it) {
+        tll_foreach(node->dict.pairs, it)
+        {
             assert(yml_is_scalar(it->item.key));
             if (strcmp(it->item.key->scalar.value, part) == 0) {
                 if (next_part == NULL) {
@@ -694,7 +661,8 @@ yml_get_value(const struct yml_node *node, const char *_path)
 }
 
 struct yml_node const *
-yml_get_key(struct yml_node const *node, char const *_path) {
+yml_get_key(struct yml_node const *node, char const *_path)
+{
     return yml_get_(node, _path, false);
 }
 
@@ -702,7 +670,8 @@ struct yml_list_iter
 yml_list_iter(const struct yml_node *list)
 {
     assert(yml_is_list(list));
-    tll_foreach(list->list.values, it) {
+    tll_foreach(list->list.values, it)
+    {
         return (struct yml_list_iter){
             .node = it->item,
             .private = it,
@@ -735,9 +704,7 @@ yml_list_length(const struct yml_node *list)
     assert(yml_is_list(list));
 
     size_t length = 0;
-    for (struct yml_list_iter it = yml_list_iter(list);
-         it.node != NULL;
-         yml_list_next(&it), length++)
+    for (struct yml_list_iter it = yml_list_iter(list); it.node != NULL; yml_list_next(&it), length++)
         ;
 
     return length;
@@ -748,7 +715,8 @@ yml_dict_iter(const struct yml_node *dict)
 {
     assert(yml_is_dict(dict));
 
-    tll_foreach(dict->dict.pairs, it) {
+    tll_foreach(dict->dict.pairs, it)
+    {
         return (struct yml_dict_iter){
             .key = it->item.key,
             .value = it->item.value,
@@ -756,7 +724,7 @@ yml_dict_iter(const struct yml_node *dict)
         };
     }
 
-    return (struct yml_dict_iter) {
+    return (struct yml_dict_iter){
         .key = NULL,
         .value = NULL,
         .private1 = NULL,
@@ -827,18 +795,12 @@ _as_bool(const struct yml_node *value, bool *ret)
         return false;
 
     const char *v = yml_value_as_string(value);
-    if (strcasecmp(v, "y") == 0 ||
-        strcasecmp(v, "yes") == 0 ||
-        strcasecmp(v, "true") == 0 ||
-        strcasecmp(v, "on") == 0)
-    {
+    if (strcasecmp(v, "y") == 0 || strcasecmp(v, "yes") == 0 || strcasecmp(v, "true") == 0
+        || strcasecmp(v, "on") == 0) {
         *ret = true;
         return true;
-    } else if (strcasecmp(v, "n") == 0 ||
-               strcasecmp(v, "no") == 0 ||
-               strcasecmp(v, "false") == 0 ||
-               strcasecmp(v, "off") == 0)
-    {
+    } else if (strcasecmp(v, "n") == 0 || strcasecmp(v, "no") == 0 || strcasecmp(v, "false") == 0
+               || strcasecmp(v, "off") == 0) {
         *ret = false;
         return true;
     }
@@ -885,7 +847,8 @@ _print_node(const struct yml_node *n, int indent)
         break;
 
     case DICT:
-        tll_foreach(n->dict.pairs, it) {
+        tll_foreach(n->dict.pairs, it)
+        {
             _print_node(it->item.key, indent);
             printf(": ");
 
@@ -900,7 +863,8 @@ _print_node(const struct yml_node *n, int indent)
         break;
 
     case LIST:
-        tll_foreach(n->list.values, it) {
+        tll_foreach(n->list.values, it)
+        {
             printf("%*s- ", indent, "");
             if (it->item->type != SCALAR) {
                 printf("\n");

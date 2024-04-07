@@ -1,12 +1,12 @@
+#include <assert.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
-#include <assert.h>
 
 #define LOG_MODULE "map"
-#include "../log.h"
-#include "../config.h"
 #include "../config-verify.h"
+#include "../config.h"
+#include "../log.h"
 #include "../particle.h"
 #include "../plugin.h"
 #include "dynlist.h"
@@ -17,14 +17,22 @@ static bool
 int_condition(const long tag_value, const long cond_value, enum map_op op)
 {
     switch (op) {
-    case MAP_OP_EQ: return tag_value == cond_value;
-    case MAP_OP_NE: return tag_value != cond_value;
-    case MAP_OP_LE: return tag_value <= cond_value;
-    case MAP_OP_LT: return tag_value < cond_value;
-    case MAP_OP_GE: return tag_value >= cond_value;
-    case MAP_OP_GT: return tag_value > cond_value;
-    case MAP_OP_SELF: LOG_WARN("using int tag as bool");
-    default: return false;
+    case MAP_OP_EQ:
+        return tag_value == cond_value;
+    case MAP_OP_NE:
+        return tag_value != cond_value;
+    case MAP_OP_LE:
+        return tag_value <= cond_value;
+    case MAP_OP_LT:
+        return tag_value < cond_value;
+    case MAP_OP_GE:
+        return tag_value >= cond_value;
+    case MAP_OP_GT:
+        return tag_value > cond_value;
+    case MAP_OP_SELF:
+        LOG_WARN("using int tag as bool");
+    default:
+        return false;
     }
 }
 
@@ -32,34 +40,50 @@ static bool
 float_condition(const double tag_value, const double cond_value, enum map_op op)
 {
     switch (op) {
-    case MAP_OP_EQ: return tag_value == cond_value;
-    case MAP_OP_NE: return tag_value != cond_value;
-    case MAP_OP_LE: return tag_value <= cond_value;
-    case MAP_OP_LT: return tag_value < cond_value;
-    case MAP_OP_GE: return tag_value >= cond_value;
-    case MAP_OP_GT: return tag_value > cond_value;
-    case MAP_OP_SELF: LOG_WARN("using float tag as bool");
-    default: return false;
+    case MAP_OP_EQ:
+        return tag_value == cond_value;
+    case MAP_OP_NE:
+        return tag_value != cond_value;
+    case MAP_OP_LE:
+        return tag_value <= cond_value;
+    case MAP_OP_LT:
+        return tag_value < cond_value;
+    case MAP_OP_GE:
+        return tag_value >= cond_value;
+    case MAP_OP_GT:
+        return tag_value > cond_value;
+    case MAP_OP_SELF:
+        LOG_WARN("using float tag as bool");
+    default:
+        return false;
     }
 }
 
 static bool
-str_condition(const char* tag_value, const char* cond_value, enum map_op op)
+str_condition(const char *tag_value, const char *cond_value, enum map_op op)
 {
     switch (op) {
-    case MAP_OP_EQ: return strcmp(tag_value, cond_value) == 0;
-    case MAP_OP_NE: return strcmp(tag_value, cond_value) != 0;
-    case MAP_OP_LE: return strcmp(tag_value, cond_value) <= 0;
-    case MAP_OP_LT: return strcmp(tag_value, cond_value) < 0;
-    case MAP_OP_GE: return strcmp(tag_value, cond_value) >= 0;
-    case MAP_OP_GT: return strcmp(tag_value, cond_value) > 0;
-    case MAP_OP_SELF: LOG_WARN("using String tag as bool");
-    default: return false;
+    case MAP_OP_EQ:
+        return strcmp(tag_value, cond_value) == 0;
+    case MAP_OP_NE:
+        return strcmp(tag_value, cond_value) != 0;
+    case MAP_OP_LE:
+        return strcmp(tag_value, cond_value) <= 0;
+    case MAP_OP_LT:
+        return strcmp(tag_value, cond_value) < 0;
+    case MAP_OP_GE:
+        return strcmp(tag_value, cond_value) >= 0;
+    case MAP_OP_GT:
+        return strcmp(tag_value, cond_value) > 0;
+    case MAP_OP_SELF:
+        LOG_WARN("using String tag as bool");
+    default:
+        return false;
     }
 }
 
 static bool
-eval_comparison(const struct map_condition* map_cond, const struct tag_set *tags)
+eval_comparison(const struct map_condition *map_cond, const struct tag_set *tags)
 {
     const struct tag *tag = tag_for_name(tags, map_cond->tag);
     if (tag == NULL) {
@@ -108,7 +132,7 @@ eval_comparison(const struct map_condition* map_cond, const struct tag_set *tags
             return false;
         }
     case TAG_TYPE_STRING: {
-        const char* tag_value = tag->as_string(tag);
+        const char *tag_value = tag->as_string(tag);
         return str_condition(tag_value, map_cond->value, map_cond->op);
     }
     }
@@ -116,19 +140,17 @@ eval_comparison(const struct map_condition* map_cond, const struct tag_set *tags
 }
 
 static bool
-eval_map_condition(const struct map_condition* map_cond, const struct tag_set *tags)
+eval_map_condition(const struct map_condition *map_cond, const struct tag_set *tags)
 {
-    switch(map_cond->op) {
+    switch (map_cond->op) {
     case MAP_OP_NOT:
         return !eval_map_condition(map_cond->cond1, tags);
 
     case MAP_OP_AND:
-        return eval_map_condition(map_cond->cond1, tags) &&
-            eval_map_condition(map_cond->cond2, tags);
+        return eval_map_condition(map_cond->cond1, tags) && eval_map_condition(map_cond->cond2, tags);
 
     case MAP_OP_OR:
-        return eval_map_condition(map_cond->cond1, tags) ||
-            eval_map_condition(map_cond->cond2, tags);
+        return eval_map_condition(map_cond->cond1, tags) || eval_map_condition(map_cond->cond2, tags);
 
     default:
         return eval_comparison(map_cond, tags);
@@ -136,28 +158,27 @@ eval_map_condition(const struct map_condition* map_cond, const struct tag_set *t
 }
 
 void
-free_map_condition(struct map_condition* c)
+free_map_condition(struct map_condition *c)
 {
-    switch (c->op)
-    {
-        case MAP_OP_EQ:
-        case MAP_OP_NE:
-        case MAP_OP_LE:
-        case MAP_OP_LT:
-        case MAP_OP_GE:
-        case MAP_OP_GT:
-            free(c->value);
-            /* FALLTHROUGH */
-        case MAP_OP_SELF:
-            free(c->tag);
-            break;
-        case MAP_OP_AND:
-        case MAP_OP_OR:
-            free_map_condition(c->cond2);
-            /* FALLTHROUGH */
-        case MAP_OP_NOT:
-            free_map_condition(c->cond1);
-            break;
+    switch (c->op) {
+    case MAP_OP_EQ:
+    case MAP_OP_NE:
+    case MAP_OP_LE:
+    case MAP_OP_LT:
+    case MAP_OP_GE:
+    case MAP_OP_GT:
+        free(c->value);
+        /* FALLTHROUGH */
+    case MAP_OP_SELF:
+        free(c->tag);
+        break;
+    case MAP_OP_AND:
+    case MAP_OP_OR:
+        free_map_condition(c->cond2);
+        /* FALLTHROUGH */
+    case MAP_OP_NOT:
+        free_map_condition(c->cond1);
+        break;
     }
     free(c);
 }
@@ -167,7 +188,8 @@ struct particle_map {
     struct particle *particle;
 };
 
-struct private {
+struct private
+{
     struct particle *default_particle;
     struct particle_map *map;
     size_t count;
@@ -208,21 +230,16 @@ expose(const struct exposable *exposable, pixman_image_t *pix, int x, int y, int
     struct eprivate *e = exposable->private;
 
     exposable_render_deco(exposable, pix, x, y, height);
-    e->exposable->expose(
-        e->exposable, pix, x + exposable->particle->left_margin, y, height);
+    e->exposable->expose(e->exposable, pix, x + exposable->particle->left_margin, y, height);
 }
 
 static void
-on_mouse(struct exposable *exposable, struct bar *bar, enum mouse_event event,
-         enum mouse_button btn, int x, int y)
+on_mouse(struct exposable *exposable, struct bar *bar, enum mouse_event event, enum mouse_button btn, int x, int y)
 {
     const struct particle *p = exposable->particle;
     const struct eprivate *e = exposable->private;
 
-    if ((event == ON_MOUSE_MOTION &&
-         exposable->particle->have_on_click_template) ||
-        exposable->on_click[btn] != NULL)
-    {
+    if ((event == ON_MOUSE_MOTION && exposable->particle->have_on_click_template) || exposable->on_click[btn] != NULL) {
         /* We have our own handler */
         exposable_default_on_mouse(exposable, bar, event, btn, x, y);
         return;
@@ -295,8 +312,8 @@ particle_destroy(struct particle *particle)
 }
 
 static struct particle *
-map_new(struct particle *common, const struct particle_map particle_map[],
-        size_t count, struct particle *default_particle)
+map_new(struct particle *common, const struct particle_map particle_map[], size_t count,
+        struct particle *default_particle)
 {
     struct private *priv = calloc(1, sizeof(*priv));
     priv->default_particle = default_particle;
@@ -314,22 +331,16 @@ map_new(struct particle *common, const struct particle_map particle_map[],
     return common;
 }
 
-
 static bool
 verify_map_conditions(keychain_t *chain, const struct yml_node *node)
 {
     if (!yml_is_dict(node)) {
-        LOG_ERR(
-            "%s: must be a dictionary of workspace-name: particle mappings",
-            conf_err_prefix(chain, node));
+        LOG_ERR("%s: must be a dictionary of workspace-name: particle mappings", conf_err_prefix(chain, node));
         return false;
     }
 
     bool result = true;
-    for (struct yml_dict_iter it = yml_dict_iter(node);
-         it.key != NULL;
-         yml_dict_next(&it))
-    {
+    for (struct yml_dict_iter it = yml_dict_iter(node); it.key != NULL; yml_dict_next(&it)) {
         const char *key = yml_value_as_string(it.key);
         if (key == NULL) {
             LOG_ERR("%s: key must be a string", conf_err_prefix(chain, it.key));
@@ -363,17 +374,11 @@ from_conf(const struct yml_node *node, struct particle *common)
 
     struct particle_map particle_map[yml_dict_length(conditions)];
 
-    struct conf_inherit inherited = {
-        .font = common->font,
-        .font_shaping = common->font_shaping,
-        .foreground = common->foreground
-    };
+    struct conf_inherit inherited
+        = {.font = common->font, .font_shaping = common->font_shaping, .foreground = common->foreground};
 
     size_t idx = 0;
-    for (struct yml_dict_iter it = yml_dict_iter(conditions);
-         it.key != NULL;
-         yml_dict_next(&it), idx++)
-    {
+    for (struct yml_dict_iter it = yml_dict_iter(conditions); it.key != NULL; yml_dict_next(&it), idx++) {
         /* Note we can skip the error checking here */
         char *key_clone = strdup(yml_value_as_string(it.key));
         YY_BUFFER_STATE buffer = yy_scan_string(key_clone);
@@ -384,8 +389,7 @@ from_conf(const struct yml_node *node, struct particle *common)
         particle_map[idx].particle = conf_to_particle(it.value, inherited);
     }
 
-    struct particle *default_particle = def != NULL
-        ? conf_to_particle(def, inherited) : NULL;
+    struct particle *default_particle = def != NULL ? conf_to_particle(def, inherited) : NULL;
 
     return map_new(common, particle_map, yml_dict_length(conditions), default_particle);
 }

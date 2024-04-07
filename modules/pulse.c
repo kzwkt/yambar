@@ -4,8 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <unistd.h>
 #include <sys/timerfd.h>
+#include <unistd.h>
 
 #include <pulse/pulseaudio.h>
 
@@ -17,7 +17,8 @@
 #include "../log.h"
 #include "../plugin.h"
 
-struct private {
+struct private
+{
     char *sink_name;
     char *source_name;
     struct particle *label;
@@ -69,9 +70,9 @@ content(struct module *mod)
 
     mtx_lock(&mod->lock);
 
-    pa_volume_t sink_volume_max   = pa_cvolume_max(&priv->sink_volume);
+    pa_volume_t sink_volume_max = pa_cvolume_max(&priv->sink_volume);
     pa_volume_t source_volume_max = pa_cvolume_max(&priv->source_volume);
-    int sink_percent   = round(100.0 * sink_volume_max   / PA_VOLUME_NORM);
+    int sink_percent = round(100.0 * sink_volume_max / PA_VOLUME_NORM);
     int source_percent = round(100.0 * source_volume_max / PA_VOLUME_NORM);
 
     struct tag_set tags = {
@@ -106,11 +107,7 @@ context_error(pa_context *c)
 }
 
 static void
-abort_event_cb(pa_mainloop_api *api,
-               pa_io_event *event,
-               int fd,
-               pa_io_event_flags_t flags,
-               void *userdata)
+abort_event_cb(pa_mainloop_api *api, pa_io_event *event, int fd, pa_io_event_flags_t flags, void *userdata)
 {
     struct module *mod = userdata;
     struct private *priv = mod->private;
@@ -119,11 +116,7 @@ abort_event_cb(pa_mainloop_api *api,
 }
 
 static void
-refresh_timer_cb(pa_mainloop_api *api,
-                 pa_io_event *event,
-                 int fd,
-                 pa_io_event_flags_t flags,
-                 void *userdata)
+refresh_timer_cb(pa_mainloop_api *api, pa_io_event *event, int fd, pa_io_event_flags_t flags, void *userdata)
 {
     struct module *mod = userdata;
     struct private *priv = mod->private;
@@ -155,8 +148,8 @@ schedule_refresh(struct module *mod)
 
     // Start the refresh timer.
     struct itimerspec t = {
-        .it_interval = { .tv_sec = 0, .tv_nsec = 0 },
-        .it_value    = { .tv_sec = 0, .tv_nsec = 50000000 },
+        .it_interval = {.tv_sec = 0, .tv_nsec = 0},
+        .it_value = {.tv_sec = 0, .tv_nsec = 50000000},
     };
     timerfd_settime(priv->refresh_timer_fd, 0, &t, NULL);
 
@@ -200,12 +193,10 @@ set_sink_info(struct module *mod, const pa_sink_info *sink_info)
     free(priv->sink_port);
 
     priv->sink_online = true;
-    priv->sink_index  = sink_info->index;
+    priv->sink_index = sink_info->index;
     priv->sink_volume = sink_info->volume;
-    priv->sink_muted  = sink_info->mute;
-    priv->sink_port   = sink_info->active_port != NULL
-                      ? strdup(sink_info->active_port->description)
-                      : NULL;
+    priv->sink_muted = sink_info->mute;
+    priv->sink_port = sink_info->active_port != NULL ? strdup(sink_info->active_port->description) : NULL;
 
     mtx_unlock(&mod->lock);
 
@@ -234,12 +225,10 @@ set_source_info(struct module *mod, const pa_source_info *source_info)
     free(priv->source_port);
 
     priv->source_online = true;
-    priv->source_index  = source_info->index;
+    priv->source_index = source_info->index;
     priv->source_volume = source_info->volume;
-    priv->source_muted  = source_info->mute;
-    priv->source_port   = source_info->active_port != NULL
-                        ? strdup(source_info->active_port->description)
-                        : NULL;
+    priv->source_muted = source_info->mute;
+    priv->source_port = source_info->active_port != NULL ? strdup(source_info->active_port->description) : NULL;
 
     mtx_unlock(&mod->lock);
 
@@ -293,32 +282,28 @@ server_info_cb(pa_context *c, const pa_server_info *i, void *userdata)
 static void
 get_sink_info_by_name(pa_context *c, const char *name, void *userdata)
 {
-    pa_operation *o =
-        pa_context_get_sink_info_by_name(c, name, sink_info_cb, userdata);
+    pa_operation *o = pa_context_get_sink_info_by_name(c, name, sink_info_cb, userdata);
     pa_operation_unref(o);
 }
 
 static void
 get_source_info_by_name(pa_context *c, const char *name, void *userdata)
 {
-    pa_operation *o =
-        pa_context_get_source_info_by_name(c, name, source_info_cb, userdata);
+    pa_operation *o = pa_context_get_source_info_by_name(c, name, source_info_cb, userdata);
     pa_operation_unref(o);
 }
 
 static void
 get_sink_info_by_index(pa_context *c, uint32_t index, void *userdata)
 {
-    pa_operation *o =
-        pa_context_get_sink_info_by_index(c, index, sink_info_cb, userdata);
+    pa_operation *o = pa_context_get_sink_info_by_index(c, index, sink_info_cb, userdata);
     pa_operation_unref(o);
 }
 
 static void
 get_source_info_by_index(pa_context *c, uint32_t index, void *userdata)
 {
-    pa_operation *o =
-        pa_context_get_source_info_by_index(c, index, source_info_cb, userdata);
+    pa_operation *o = pa_context_get_source_info_by_index(c, index, source_info_cb, userdata);
     pa_operation_unref(o);
 }
 
@@ -332,15 +317,12 @@ get_server_info(pa_context *c, void *userdata)
 static void
 subscribe(pa_context *c, void *userdata)
 {
-    pa_subscription_mask_t mask = PA_SUBSCRIPTION_MASK_SERVER
-                                | PA_SUBSCRIPTION_MASK_SINK
-                                | PA_SUBSCRIPTION_MASK_SOURCE;
+    pa_subscription_mask_t mask = PA_SUBSCRIPTION_MASK_SERVER | PA_SUBSCRIPTION_MASK_SINK | PA_SUBSCRIPTION_MASK_SOURCE;
     pa_operation *o = pa_context_subscribe(c, mask, NULL, userdata);
     pa_operation_unref(o);
 }
 
-static pa_context *
-connect_to_server(struct module *mod);
+static pa_context *connect_to_server(struct module *mod);
 
 static void
 context_state_change_cb(pa_context *c, void *userdata)
@@ -380,16 +362,13 @@ context_state_change_cb(pa_context *c, void *userdata)
 }
 
 static void
-subscription_event_cb(pa_context *c,
-                      pa_subscription_event_type_t event_type,
-                      uint32_t index,
-                      void *userdata)
+subscription_event_cb(pa_context *c, pa_subscription_event_type_t event_type, uint32_t index, void *userdata)
 {
     struct module *mod = userdata;
     struct private *priv = mod->private;
 
     int facility = event_type & PA_SUBSCRIPTION_EVENT_FACILITY_MASK;
-    int type     = event_type & PA_SUBSCRIPTION_EVENT_TYPE_MASK;
+    int type = event_type & PA_SUBSCRIPTION_EVENT_TYPE_MASK;
 
     switch (facility) {
     case PA_SUBSCRIPTION_EVENT_SERVER:
@@ -435,8 +414,7 @@ connect_to_server(struct module *mod)
     pa_context_set_subscribe_callback(c, subscription_event_cb, mod);
 
     // Connect to server.
-    pa_context_flags_t flags = PA_CONTEXT_NOFAIL
-                             | PA_CONTEXT_NOAUTOSPAWN;
+    pa_context_flags_t flags = PA_CONTEXT_NOFAIL | PA_CONTEXT_NOAUTOSPAWN;
     if (pa_context_connect(c, NULL, flags, NULL) < 0) {
         LOG_ERR("failed to connect to PulseAudio server: %s", context_error(c));
         pa_context_unref(c);
@@ -477,10 +455,8 @@ run(struct module *mod)
 
     // Poll refresh timer and abort event.
     pa_mainloop_api *api = pa_mainloop_get_api(priv->mainloop);
-    api->io_new(api, priv->refresh_timer_fd, PA_IO_EVENT_INPUT,
-                refresh_timer_cb, mod);
-    api->io_new(api, mod->abort_fd, PA_IO_EVENT_INPUT | PA_IO_EVENT_HANGUP,
-                abort_event_cb, mod);
+    api->io_new(api, priv->refresh_timer_fd, PA_IO_EVENT_INPUT, refresh_timer_cb, mod);
+    api->io_new(api, mod->abort_fd, PA_IO_EVENT_INPUT | PA_IO_EVENT_HANGUP, abort_event_cb, mod);
 
     // Run main loop.
     if (pa_mainloop_run(priv->mainloop, &ret) < 0) {
@@ -497,9 +473,7 @@ run(struct module *mod)
 }
 
 static struct module *
-pulse_new(const char *sink_name,
-          const char *source_name,
-          struct particle *label)
+pulse_new(const char *sink_name, const char *source_name, struct particle *label)
 {
     struct private *priv = calloc(1, sizeof *priv);
     priv->label = label;
@@ -522,10 +496,9 @@ from_conf(const struct yml_node *node, struct conf_inherit inherited)
     const struct yml_node *source = yml_get_value(node, "source");
     const struct yml_node *content = yml_get_value(node, "content");
 
-    return pulse_new(
-        sink != NULL ? yml_value_as_string(sink) : "@DEFAULT_SINK@",
-        source != NULL ? yml_value_as_string(source) : "@DEFAULT_SOURCE@",
-        conf_to_particle(content, inherited));
+    return pulse_new(sink != NULL ? yml_value_as_string(sink) : "@DEFAULT_SINK@",
+                     source != NULL ? yml_value_as_string(source) : "@DEFAULT_SOURCE@",
+                     conf_to_particle(content, inherited));
 }
 
 static bool

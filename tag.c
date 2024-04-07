@@ -1,19 +1,20 @@
 #include "tag.h"
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <ctype.h>
 #include <assert.h>
-#include<errno.h>
+#include <ctype.h>
+#include <errno.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define LOG_MODULE "tag"
 #define LOG_ENABLE_DBG 1
 #include "log.h"
 #include "module.h"
 
-struct private {
+struct private
+{
     char *name;
     union {
         struct {
@@ -156,8 +157,8 @@ int_refresh_in(const struct tag *tag, long units)
     if (tag->owner == NULL || tag->owner->refresh_in == NULL)
         return false;
 
-    assert(priv->value_as_int.realtime_unit == TAG_REALTIME_SECS ||
-           priv->value_as_int.realtime_unit == TAG_REALTIME_MSECS);
+    assert(priv->value_as_int.realtime_unit == TAG_REALTIME_SECS
+           || priv->value_as_int.realtime_unit == TAG_REALTIME_MSECS);
 
     long milli_seconds = units;
     if (priv->value_as_int.realtime_unit == TAG_REALTIME_SECS)
@@ -269,15 +270,14 @@ tag_new_int(struct module *owner, const char *name, long value)
 }
 
 struct tag *
-tag_new_int_range(struct module *owner, const char *name, long value,
-                  long min, long max)
+tag_new_int_range(struct module *owner, const char *name, long value, long min, long max)
 {
     return tag_new_int_realtime(owner, name, value, min, max, TAG_REALTIME_NONE);
 }
 
 struct tag *
-tag_new_int_realtime(struct module *owner, const char *name, long value,
-                     long min, long max, enum tag_realtime_unit unit)
+tag_new_int_realtime(struct module *owner, const char *name, long value, long min, long max,
+                     enum tag_realtime_unit unit)
 {
     struct private *priv = malloc(sizeof(*priv));
     priv->name = strdup(name);
@@ -414,7 +414,7 @@ sbuf_append_at_most(struct sbuf *s1, const char *s2, size_t n)
         s1->size = 2 * required_size;
 
         s1->s = realloc(s1->s, s1->size);
-        //s1->s[s1->len] = '\0';
+        // s1->s[s1->len] = '\0';
     }
 
     memcpy(&s1->s[s1->len], s2, n);
@@ -516,14 +516,16 @@ tags_expand_template(const char *template, const struct tag_set *tags)
             FMT_KIBYTE,
             FMT_MIBYTE,
             FMT_GIBYTE,
-        } format = FMT_DEFAULT;
+        } format
+            = FMT_DEFAULT;
 
         enum {
             VALUE_VALUE,
             VALUE_MIN,
             VALUE_MAX,
             VALUE_UNIT,
-        } kind = VALUE_VALUE;
+        } kind
+            = VALUE_VALUE;
 
         int digits = 0;
         int decimals = 2;
@@ -567,22 +569,17 @@ tags_expand_template(const char *template, const struct tag_set *tags)
 
                 if (digits_str[0] != '\0') { // guards against i.e. "{tag:.3}"
                     if (!is_number(digits_str, &digits)) {
-                        LOG_WARN(
-                            "tag `%s`: invalid field width formatter. Ignoring...",
-                            tag_name);
+                        LOG_WARN("tag `%s`: invalid field width formatter. Ignoring...", tag_name);
                     }
                 }
 
                 if (decimals_str[0] != '\0') { // guards against i.e. "{tag:3.}"
                     if (!is_number(decimals_str, &decimals)) {
-                        LOG_WARN(
-                            "tag `%s`: invalid decimals formatter. Ignoring...",
-                            tag_name);
+                        LOG_WARN("tag `%s`: invalid decimals formatter. Ignoring...", tag_name);
                     }
                 }
                 zero_pad = digits_str[0] == '0';
-            }
-            else
+            } else
                 LOG_WARN("invalid tag formatter: %s", tag_args[i]);
         }
 
@@ -593,7 +590,7 @@ tags_expand_template(const char *template, const struct tag_set *tags)
             case FMT_DEFAULT: {
                 switch (tag->type(tag)) {
                 case TAG_TYPE_FLOAT: {
-                    const char* fmt = zero_pad ? "%0*.*f" : "%*.*f";
+                    const char *fmt = zero_pad ? "%0*.*f" : "%*.*f";
                     char str[24];
                     snprintf(str, sizeof(str), fmt, digits, decimals, tag->as_float(tag));
                     sbuf_append(&formatted, str);
@@ -601,7 +598,7 @@ tags_expand_template(const char *template, const struct tag_set *tags)
                 }
 
                 case TAG_TYPE_INT: {
-                    const char* fmt = zero_pad ? "%0*ld" : "%*ld";
+                    const char *fmt = zero_pad ? "%0*ld" : "%*ld";
                     char str[24];
                     snprintf(str, sizeof(str), fmt, digits, tag->as_int(tag));
                     sbuf_append(&formatted, str);
@@ -618,9 +615,7 @@ tags_expand_template(const char *template, const struct tag_set *tags)
 
             case FMT_HEX:
             case FMT_OCT: {
-                const char* fmt = format == FMT_HEX ?
-                    zero_pad ? "%0*lx" : "%*lx" :
-                    zero_pad ? "%0*lo" : "%*lo";
+                const char *fmt = format == FMT_HEX ? zero_pad ? "%0*lx" : "%*lx" : zero_pad ? "%0*lo" : "%*lo";
                 char str[24];
                 snprintf(str, sizeof(str), fmt, digits, tag->as_int(tag));
                 sbuf_append(&formatted, str);
@@ -632,7 +627,7 @@ tags_expand_template(const char *template, const struct tag_set *tags)
                 const long max = tag->max(tag);
                 const long cur = tag->as_int(tag);
 
-                const char* fmt = zero_pad ? "%0*lu" : "%*lu";
+                const char *fmt = zero_pad ? "%0*lu" : "%*lu";
                 char str[4];
                 snprintf(str, sizeof(str), fmt, digits, (cur - min) * 100 / (max - min));
                 sbuf_append(&formatted, str);
@@ -645,21 +640,20 @@ tags_expand_template(const char *template, const struct tag_set *tags)
             case FMT_KIBYTE:
             case FMT_MIBYTE:
             case FMT_GIBYTE: {
-                const long divider =
-                    format == FMT_KBYTE ? 1000 :
-                    format == FMT_MBYTE ? 1000 * 1000 :
-                    format == FMT_GBYTE ? 1000 * 1000 * 1000 :
-                    format == FMT_KIBYTE ? 1024 :
-                    format == FMT_MIBYTE ? 1024 * 1024 :
-                    format == FMT_GIBYTE ? 1024 * 1024 * 1024 :
-                    1;
+                const long divider = format == FMT_KBYTE    ? 1000
+                                     : format == FMT_MBYTE  ? 1000 * 1000
+                                     : format == FMT_GBYTE  ? 1000 * 1000 * 1000
+                                     : format == FMT_KIBYTE ? 1024
+                                     : format == FMT_MIBYTE ? 1024 * 1024
+                                     : format == FMT_GIBYTE ? 1024 * 1024 * 1024
+                                                            : 1;
 
                 char str[24];
                 if (tag->type(tag) == TAG_TYPE_FLOAT) {
-                    const char* fmt = zero_pad ? "%0*.*f" : "%*.*f";
+                    const char *fmt = zero_pad ? "%0*.*f" : "%*.*f";
                     snprintf(str, sizeof(str), fmt, digits, decimals, tag->as_float(tag) / (double)divider);
                 } else {
-                    const char* fmt = zero_pad ? "%0*lu" : "%*lu";
+                    const char *fmt = zero_pad ? "%0*lu" : "%*lu";
                     snprintf(str, sizeof(str), fmt, digits, tag->as_int(tag) / divider);
                 }
                 sbuf_append(&formatted, str);
@@ -676,9 +670,15 @@ tags_expand_template(const char *template, const struct tag_set *tags)
 
             const char *fmt = NULL;
             switch (format) {
-            case FMT_DEFAULT: fmt = zero_pad ? "%0*ld" : "%*ld"; break;
-            case FMT_HEX:     fmt = zero_pad ? "%0*lx" : "%*lx"; break;
-            case FMT_OCT:     fmt = zero_pad ? "%0*lo" : "%*lo"; break;
+            case FMT_DEFAULT:
+                fmt = zero_pad ? "%0*ld" : "%*ld";
+                break;
+            case FMT_HEX:
+                fmt = zero_pad ? "%0*lx" : "%*lx";
+                break;
+            case FMT_OCT:
+                fmt = zero_pad ? "%0*lo" : "%*lo";
+                break;
             case FMT_PERCENT:
                 value = (value - min) * 100 / (max - min);
                 fmt = zero_pad ? "%0*lu" : "%*lu";
@@ -690,14 +690,13 @@ tags_expand_template(const char *template, const struct tag_set *tags)
             case FMT_KIBYTE:
             case FMT_MIBYTE:
             case FMT_GIBYTE: {
-                const long divider =
-                    format == FMT_KBYTE ? 1024 :
-                    format == FMT_MBYTE ? 1024 * 1024 :
-                    format == FMT_GBYTE ? 1024 * 1024 * 1024 :
-                    format == FMT_KIBYTE ? 1000 :
-                    format == FMT_MIBYTE ? 1000 * 1000 :
-                    format == FMT_GIBYTE ? 1000 * 1000 * 1000 :
-                    1;
+                const long divider = format == FMT_KBYTE    ? 1024
+                                     : format == FMT_MBYTE  ? 1024 * 1024
+                                     : format == FMT_GBYTE  ? 1024 * 1024 * 1024
+                                     : format == FMT_KIBYTE ? 1000
+                                     : format == FMT_MIBYTE ? 1000 * 1000
+                                     : format == FMT_GIBYTE ? 1000 * 1000 * 1000
+                                                            : 1;
                 value /= divider;
                 fmt = zero_pad ? "%0*lu" : "%*lu";
                 break;
@@ -716,9 +715,15 @@ tags_expand_template(const char *template, const struct tag_set *tags)
             const char *value = NULL;
 
             switch (tag->realtime(tag)) {
-            case TAG_REALTIME_NONE:  value = ""; break;
-            case TAG_REALTIME_SECS:  value = "s"; break;
-            case TAG_REALTIME_MSECS: value = "ms"; break;
+            case TAG_REALTIME_NONE:
+                value = "";
+                break;
+            case TAG_REALTIME_SECS:
+                value = "s";
+                break;
+            case TAG_REALTIME_MSECS:
+                value = "ms";
+                break;
             }
 
             sbuf_append(&formatted, value);
@@ -734,8 +739,7 @@ tags_expand_template(const char *template, const struct tag_set *tags)
 }
 
 void
-tags_expand_templates(char *expanded[], const char *template[], size_t nmemb,
-                      const struct tag_set *tags)
+tags_expand_templates(char *expanded[], const char *template[], size_t nmemb, const struct tag_set *tags)
 {
     for (size_t i = 0; i < nmemb; i++)
         expanded[i] = tags_expand_template(template[i], tags);

@@ -1,99 +1,94 @@
 #include "plugin.h"
 
-#include <string.h>
 #include <dlfcn.h>
+#include <string.h>
 
 #include <tllist.h>
 
 #define LOG_MODULE "plugin"
 #define LOG_ENABLE_DBG 0
-#include "log.h"
 #include "config.h"
+#include "log.h"
 
 #if !defined(CORE_PLUGINS_AS_SHARED_LIBRARIES)
 
-#define EXTERN_MODULE(plug_name)                                        \
-    extern const struct module_iface module_##plug_name##_iface;        \
-    extern bool plug_name##_verify_conf(                                \
-        keychain_t *chain, const struct yml_node *node);                \
-    extern struct module *plug_name##_from_conf(                        \
-        const struct yml_node *node, struct conf_inherit inherited);
+#define EXTERN_MODULE(plug_name)                                                                                       \
+    extern const struct module_iface module_##plug_name##_iface;                                                       \
+    extern bool plug_name##_verify_conf(keychain_t *chain, const struct yml_node *node);                               \
+    extern struct module *plug_name##_from_conf(const struct yml_node *node, struct conf_inherit inherited);
 
-#define EXTERN_PARTICLE(plug_name)                                      \
-    extern const struct particle_iface particle_##plug_name##_iface;    \
-    extern bool plug_name##_verify_conf(                                \
-        keychain_t *chain, const struct yml_node *node);                \
-    extern struct particle *plug_name##_from_conf(                      \
-        const struct yml_node *node, struct particle *common);
+#define EXTERN_PARTICLE(plug_name)                                                                                     \
+    extern const struct particle_iface particle_##plug_name##_iface;                                                   \
+    extern bool plug_name##_verify_conf(keychain_t *chain, const struct yml_node *node);                               \
+    extern struct particle *plug_name##_from_conf(const struct yml_node *node, struct particle *common);
 
-#define EXTERN_DECORATION(plug_name)                                    \
-    extern const struct deco_iface deco_##plug_name##_iface;            \
-    extern bool plug_name##_verify_conf(                                \
-        keychain_t *chain, const struct yml_node *node);                \
+#define EXTERN_DECORATION(plug_name)                                                                                   \
+    extern const struct deco_iface deco_##plug_name##_iface;                                                           \
+    extern bool plug_name##_verify_conf(keychain_t *chain, const struct yml_node *node);                               \
     extern struct deco *plug_name##_from_conf(const struct yml_node *node);
 
 #if defined(HAVE_PLUGIN_alsa)
- EXTERN_MODULE(alsa);
+EXTERN_MODULE(alsa);
 #endif
 #if defined(HAVE_PLUGIN_backlight)
- EXTERN_MODULE(backlight);
+EXTERN_MODULE(backlight);
 #endif
 #if defined(HAVE_PLUGIN_battery)
- EXTERN_MODULE(battery);
+EXTERN_MODULE(battery);
 #endif
 #if defined(HAVE_PLUGIN_clock)
- EXTERN_MODULE(clock);
+EXTERN_MODULE(clock);
 #endif
 #if defined(HAVE_PLUGIN_cpu)
- EXTERN_MODULE(cpu);
+EXTERN_MODULE(cpu);
 #endif
 #if defined(HAVE_PLUGIN_disk_io)
- EXTERN_MODULE(disk_io);
+EXTERN_MODULE(disk_io);
 #endif
 #if defined(HAVE_PLUGIN_dwl)
- EXTERN_MODULE(dwl);
+EXTERN_MODULE(dwl);
 #endif
 #if defined(HAVE_PLUGIN_foreign_toplevel)
- EXTERN_MODULE(foreign_toplevel);
+EXTERN_MODULE(foreign_toplevel);
 #endif
 #if defined(HAVE_PLUGIN_mem)
- EXTERN_MODULE(mem);
+EXTERN_MODULE(mem);
 #endif
 #if defined(HAVE_PLUGIN_mpd)
-  EXTERN_MODULE(mpd);
+EXTERN_MODULE(mpd);
 #endif
 #if defined(HAVE_PLUGIN_i3)
- EXTERN_MODULE(i3);
+EXTERN_MODULE(i3);
 #endif
 #if defined(HAVE_PLUGIN_label)
- EXTERN_MODULE(label);
+EXTERN_MODULE(label);
 #endif
 #if defined(HAVE_PLUGIN_network)
- EXTERN_MODULE(network);
+EXTERN_MODULE(network);
 #endif
 #if defined(HAVE_PLUGIN_pipewire)
- EXTERN_MODULE(pipewire);
+EXTERN_MODULE(pipewire);
 #endif
 #if defined(HAVE_PLUGIN_pulse)
- EXTERN_MODULE(pulse);
+EXTERN_MODULE(pulse);
 #endif
 #if defined(HAVE_PLUGIN_removables)
- EXTERN_MODULE(removables);
+EXTERN_MODULE(removables);
 #endif
 #if defined(HAVE_PLUGIN_river)
- EXTERN_MODULE(river);
+EXTERN_MODULE(river);
 #endif
 #if defined(HAVE_PLUGIN_script)
- EXTERN_MODULE(script);
+EXTERN_MODULE(script);
 #endif
 #if defined(HAVE_PLUGIN_sway_xkb)
- EXTERN_MODULE(sway_xkb);
+EXTERN_MODULE(sway_xkb);
 #endif
 #if defined(HAVE_PLUGIN_xkb)
- EXTERN_MODULE(xkb);
+EXTERN_MODULE(xkb);
 #endif
 #if defined(HAVE_PLUGIN_xwindow)
- EXTERN_MODULE(xwindow);
+EXTERN_MODULE(xwindow);
 #endif
 
 EXTERN_PARTICLE(empty);
@@ -121,42 +116,45 @@ static const char *
 type2str(enum plugin_type type)
 {
     switch (type) {
-    case PLUGIN_MODULE:     return "module";
-    case PLUGIN_PARTICLE:   return "particle";
-    case PLUGIN_DECORATION: return "decoration";
+    case PLUGIN_MODULE:
+        return "module";
+    case PLUGIN_PARTICLE:
+        return "particle";
+    case PLUGIN_DECORATION:
+        return "decoration";
     }
 
     assert(false && "invalid type");
     return "";
 }
 
-static void __attribute__((constructor))
-init(void)
+static void __attribute__((constructor)) init(void)
 {
 #if !defined(CORE_PLUGINS_AS_SHARED_LIBRARIES)
 
-#define REGISTER_CORE_PLUGIN(plug_name, func_prefix, plug_type)   \
-    do {                                                          \
-        tll_push_back(                                            \
-            plugins,                                              \
-            ((struct plugin){                                     \
-                .name = strdup(#plug_name),                       \
-                .type = (plug_type),                              \
-                .lib = RTLD_DEFAULT,                              \
-            }));                                                  \
+#define REGISTER_CORE_PLUGIN(plug_name, func_prefix, plug_type)                                                        \
+    do {                                                                                                               \
+        tll_push_back(plugins, ((struct plugin){                                                                       \
+                                   .name = strdup(#plug_name),                                                         \
+                                   .type = (plug_type),                                                                \
+                                   .lib = RTLD_DEFAULT,                                                                \
+                               }));                                                                                    \
     } while (0)
 
-#define REGISTER_CORE_MODULE(plug_name, func_prefix)  do {              \
-        REGISTER_CORE_PLUGIN(plug_name, func_prefix, PLUGIN_MODULE);    \
-        tll_back(plugins).module = &module_##func_prefix##_iface;       \
+#define REGISTER_CORE_MODULE(plug_name, func_prefix)                                                                   \
+    do {                                                                                                               \
+        REGISTER_CORE_PLUGIN(plug_name, func_prefix, PLUGIN_MODULE);                                                   \
+        tll_back(plugins).module = &module_##func_prefix##_iface;                                                      \
     } while (0)
-#define REGISTER_CORE_PARTICLE(plug_name, func_prefix) do {             \
-        REGISTER_CORE_PLUGIN(plug_name, func_prefix, PLUGIN_PARTICLE);  \
-        tll_back(plugins).particle = &particle_##func_prefix##_iface;   \
+#define REGISTER_CORE_PARTICLE(plug_name, func_prefix)                                                                 \
+    do {                                                                                                               \
+        REGISTER_CORE_PLUGIN(plug_name, func_prefix, PLUGIN_PARTICLE);                                                 \
+        tll_back(plugins).particle = &particle_##func_prefix##_iface;                                                  \
     } while (0)
-#define REGISTER_CORE_DECORATION(plug_name, func_prefix) do {           \
-        REGISTER_CORE_PLUGIN(plug_name, func_prefix, PLUGIN_DECORATION); \
-        tll_back(plugins).decoration = &deco_##func_prefix##_iface;     \
+#define REGISTER_CORE_DECORATION(plug_name, func_prefix)                                                               \
+    do {                                                                                                               \
+        REGISTER_CORE_PLUGIN(plug_name, func_prefix, PLUGIN_DECORATION);                                               \
+        tll_back(plugins).decoration = &deco_##func_prefix##_iface;                                                    \
     } while (0)
 
 #if defined(HAVE_PLUGIN_alsa)
@@ -258,23 +256,19 @@ free_plugin(struct plugin plug)
     free(plug.name);
 }
 
-static void __attribute__((destructor))
-fini(void)
-{
-    tll_free_and_free(plugins, free_plugin);
-}
+static void __attribute__((destructor)) fini(void) { tll_free_and_free(plugins, free_plugin); }
 
 const struct plugin *
 plugin_load(const char *name, enum plugin_type type)
 {
-    tll_foreach(plugins, plug) {
+    tll_foreach(plugins, plug)
+    {
         if (plug->item.type == type && strcmp(plug->item.name, name) == 0) {
             LOG_DBG("%s: %s already loaded: %p", type2str(type), name, plug->item.lib);
             assert(plug->item.dummy != NULL);
             return &plug->item;
         }
     }
-
 
     char path[128];
     snprintf(path, sizeof(path), "%s_%s.so", type2str(type), name);

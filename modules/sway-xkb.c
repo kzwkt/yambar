@@ -3,15 +3,15 @@
 
 #define LOG_MODULE "sway-xkb"
 #define LOG_ENABLE_DBG 0
-#include "../log.h"
 #include "../bar/bar.h"
 #include "../config-verify.h"
 #include "../config.h"
+#include "../log.h"
 #include "../particles/dynlist.h"
 #include "../plugin.h"
 
-#include "i3-ipc.h"
 #include "i3-common.h"
+#include "i3-ipc.h"
 
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
@@ -21,7 +21,8 @@ struct input {
     char *layout;
 };
 
-struct private {
+struct private
+{
     struct particle *template;
     int left_spacing;
     int right_spacing;
@@ -89,8 +90,7 @@ content(struct module *mod)
     }
 
     mtx_unlock(&mod->lock);
-    return dynlist_exposable_new(
-        particles, m->num_existing_inputs, m->left_spacing, m->right_spacing);
+    return dynlist_exposable_new(particles, m->num_existing_inputs, m->left_spacing, m->right_spacing);
 }
 
 static bool
@@ -121,8 +121,7 @@ handle_input_reply(int sock, int type, const struct json_object *json, void *_mo
         struct input *input = NULL;
         for (size_t i = 0; i < m->num_inputs; i++) {
             struct input *maybe_input = &m->inputs[i];
-            if (strcmp(maybe_input->identifier, id) == 0 && !maybe_input->exists)
-            {
+            if (strcmp(maybe_input->identifier, id) == 0 && !maybe_input->exists) {
                 input = maybe_input;
 
                 LOG_DBG("adding: %s", id);
@@ -142,8 +141,7 @@ handle_input_reply(int sock, int type, const struct json_object *json, void *_mo
 
         /* Get current/active layout */
         struct json_object *layout;
-        if (!json_object_object_get_ex(
-                obj, "xkb_active_layout_name", &layout))
+        if (!json_object_object_get_ex(obj, "xkb_active_layout_name", &layout))
             return false;
 
         const char *new_layout_str = json_object_get_string(layout);
@@ -240,8 +238,7 @@ handle_input_event(int sock, int type, const struct json_object *json, void *_mo
 
     /* Get current/active layout */
     struct json_object *layout;
-    if (!json_object_object_get_ex(
-            obj, "xkb_active_layout_name", &layout))
+    if (!json_object_object_get_ex(obj, "xkb_active_layout_name", &layout))
         return false;
 
     const char *new_layout_str = json_object_get_string(layout);
@@ -309,8 +306,8 @@ run(struct module *mod)
 }
 
 static struct module *
-sway_xkb_new(struct particle *template, const char *identifiers[],
-             size_t num_identifiers, int left_spacing, int right_spacing)
+sway_xkb_new(struct particle *template, const char *identifiers[], size_t num_identifiers, int left_spacing,
+             int right_spacing)
 {
     struct private *m = calloc(1, sizeof(*m));
     m->template = template;
@@ -343,40 +340,32 @@ from_conf(const struct yml_node *node, struct conf_inherit inherited)
     const struct yml_node *left_spacing = yml_get_value(node, "left-spacing");
     const struct yml_node *right_spacing = yml_get_value(node, "right-spacing");
 
-    int left = spacing != NULL ? yml_value_as_int(spacing) :
-        left_spacing != NULL ? yml_value_as_int(left_spacing) : 0;
-    int right = spacing != NULL ? yml_value_as_int(spacing) :
-        right_spacing != NULL ? yml_value_as_int(right_spacing) : 0;
+    int left = spacing != NULL ? yml_value_as_int(spacing) : left_spacing != NULL ? yml_value_as_int(left_spacing) : 0;
+    int right = spacing != NULL         ? yml_value_as_int(spacing)
+                : right_spacing != NULL ? yml_value_as_int(right_spacing)
+                                        : 0;
 
     const struct yml_node *ids = yml_get_value(node, "identifiers");
     const size_t num_ids = yml_list_length(ids);
     const char *identifiers[num_ids];
 
     size_t i = 0;
-    for (struct yml_list_iter it = yml_list_iter(ids);
-         it.node != NULL;
-         yml_list_next(&it), i++)
-    {
+    for (struct yml_list_iter it = yml_list_iter(ids); it.node != NULL; yml_list_next(&it), i++) {
         identifiers[i] = yml_value_as_string(it.node);
     }
 
-    return sway_xkb_new(
-        conf_to_particle(c, inherited), identifiers, num_ids, left, right);
+    return sway_xkb_new(conf_to_particle(c, inherited), identifiers, num_ids, left, right);
 }
 
 static bool
 verify_identifiers(keychain_t *chain, const struct yml_node *node)
 {
     if (!yml_is_list(node)) {
-        LOG_ERR("%s: identifiers must be a list of strings",
-                conf_err_prefix(chain, node));
+        LOG_ERR("%s: identifiers must be a list of strings", conf_err_prefix(chain, node));
         return false;
     }
 
-    for (struct yml_list_iter it = yml_list_iter(node);
-         it.node != NULL;
-         yml_list_next(&it))
-    {
+    for (struct yml_list_iter it = yml_list_iter(node); it.node != NULL; yml_list_next(&it)) {
         if (!conf_verify_string(chain, it.node))
             return false;
     }
@@ -404,5 +393,5 @@ const struct module_iface module_sway_xkb_iface = {
 };
 
 #if defined(CORE_PLUGINS_AS_SHARED_LIBRARIES)
-extern const struct module_iface iface __attribute__((weak, alias("module_sway_xkb_iface"))) ;
+extern const struct module_iface iface __attribute__((weak, alias("module_sway_xkb_iface")));
 #endif

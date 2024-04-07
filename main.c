@@ -1,4 +1,6 @@
 #include <assert.h>
+#include <errno.h>
+#include <getopt.h>
 #include <locale.h>
 #include <poll.h>
 #include <signal.h>
@@ -9,14 +11,12 @@
 #include <string.h>
 #include <threads.h>
 #include <unistd.h>
-#include <getopt.h>
-#include <errno.h>
 
-#include <sys/types.h>
-#include <sys/eventfd.h>
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <pwd.h>
+#include <sys/eventfd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "bar/bar.h"
 #include "config.h"
@@ -147,9 +147,8 @@ print_pid(const char *pid_file, bool *unlink_at_exit)
     int pid_fd = strtoul(pid_file, &end, 10);
 
     if (errno != 0 || *end != '\0') {
-        if ((pid_fd = open(pid_file,
-                           O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC,
-                           S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) < 0) {
+        if ((pid_fd = open(pid_file, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH))
+            < 0) {
             LOG_ERRNO("%s: failed to open", pid_file);
             return false;
         } else
@@ -178,16 +177,16 @@ int
 main(int argc, char *const *argv)
 {
     static const struct option longopts[] = {
-        {"backend",          required_argument, 0, 'b'},
-        {"config",           required_argument, 0, 'c'},
-        {"validate",         no_argument,       0, 'C'},
-        {"print-pid",        required_argument, 0, 'p'},
-        {"log-level",        required_argument, 0, 'd'},
-        {"log-colorize",     optional_argument, 0, 'l'},
-        {"log-no-syslog",    no_argument,       0, 's'},
-        {"version",          no_argument,       0, 'v'},
-        {"help",             no_argument,       0, 'h'},
-        {NULL,               no_argument,       0, 0},
+        {"backend", required_argument, 0, 'b'},
+        {"config", required_argument, 0, 'c'},
+        {"validate", no_argument, 0, 'C'},
+        {"print-pid", required_argument, 0, 'p'},
+        {"log-level", required_argument, 0, 'd'},
+        {"log-colorize", optional_argument, 0, 'l'},
+        {"log-no-syslog", no_argument, 0, 's'},
+        {"version", no_argument, 0, 'v'},
+        {"help", no_argument, 0, 'h'},
+        {NULL, no_argument, 0, 0},
     };
 
     bool unlink_pid_file = false;
@@ -224,8 +223,7 @@ main(int argc, char *const *argv)
                 fprintf(stderr, "%s: invalid configuration file: %s\n", optarg, strerror(errno));
                 return EXIT_FAILURE;
             } else if (!S_ISREG(st.st_mode) && !S_ISFIFO(st.st_mode)) {
-                fprintf(stderr, "%s: invalid configuration file: neither a regular file nor a pipe or FIFO\n",
-                        optarg);
+                fprintf(stderr, "%s: invalid configuration file: neither a regular file nor a pipe or FIFO\n", optarg);
                 return EXIT_FAILURE;
             }
 
@@ -244,11 +242,7 @@ main(int argc, char *const *argv)
         case 'd': {
             int lvl = log_level_from_string(optarg);
             if (lvl < 0) {
-                fprintf(
-                    stderr,
-                    "-d,--log-level: %s: argument must be one of %s\n",
-                    optarg,
-                    log_level_string_hint());
+                fprintf(stderr, "-d,--log-level: %s: argument must be one of %s\n", optarg, log_level_string_hint());
                 return EXIT_FAILURE;
             }
             log_level = lvl;
@@ -292,12 +286,9 @@ main(int argc, char *const *argv)
 
     log_init(log_colorize, log_syslog, LOG_FACILITY_DAEMON, log_level);
 
-    _Static_assert((int)LOG_CLASS_ERROR == (int)FCFT_LOG_CLASS_ERROR,
-                   "fcft log level enum offset");
-    _Static_assert((int)LOG_COLORIZE_ALWAYS == (int)FCFT_LOG_COLORIZE_ALWAYS,
-                   "fcft colorize enum mismatch");
-    fcft_init((enum fcft_log_colorize)log_colorize, log_syslog,
-              (enum fcft_log_class)log_level);
+    _Static_assert((int)LOG_CLASS_ERROR == (int)FCFT_LOG_CLASS_ERROR, "fcft log level enum offset");
+    _Static_assert((int)LOG_COLORIZE_ALWAYS == (int)FCFT_LOG_COLORIZE_ALWAYS, "fcft colorize enum mismatch");
+    fcft_init((enum fcft_log_colorize)log_colorize, log_syslog, (enum fcft_log_class)log_level);
     atexit(&fcft_fini);
 
     const struct sigaction sa = {.sa_handler = &signal_handler};

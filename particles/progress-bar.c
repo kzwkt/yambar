@@ -1,16 +1,17 @@
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 #define LOG_MODULE "progress_bar"
 #define LOG_ENABLE_DBG 0
-#include "../log.h"
-#include "../config.h"
 #include "../config-verify.h"
+#include "../config.h"
+#include "../log.h"
 #include "../particle.h"
 #include "../plugin.h"
 
-struct private {
+struct private
+{
     char *tag;
     int width;
 
@@ -74,8 +75,7 @@ begin_expose(struct exposable *exposable)
 
     /* Margins */
     if (have_at_least_one) {
-        exposable->width += exposable->particle->left_margin +
-            exposable->particle->right_margin;
+        exposable->width += exposable->particle->left_margin + exposable->particle->right_margin;
     } else
         assert(exposable->width == 0);
 
@@ -97,8 +97,7 @@ expose(const struct exposable *exposable, pixman_image_t *pix, int x, int y, int
 }
 
 static void
-on_mouse(struct exposable *exposable, struct bar *bar, enum mouse_event event,
-         enum mouse_button btn, int x, int y)
+on_mouse(struct exposable *exposable, struct bar *bar, enum mouse_event event, enum mouse_button btn, int x, int y)
 {
     const struct particle *p = exposable->particle;
     const struct eprivate *e = exposable->private;
@@ -161,18 +160,14 @@ on_mouse(struct exposable *exposable, struct bar *bar, enum mouse_event event,
         original[i] = exposable->on_click[i];
 
     if (event == ON_MOUSE_CLICK) {
-        long where = clickable_width > 0
-            ? 100 * (x - x_offset) / clickable_width
-            : 0;
+        long where = clickable_width > 0 ? 100 * (x - x_offset) / clickable_width : 0;
 
         struct tag_set tags = {
             .tags = (struct tag *[]){tag_new_int(NULL, "where", where)},
             .count = 1,
         };
 
-        tags_expand_templates(
-            exposable->on_click, (const char **)exposable->on_click,
-            MOUSE_BTN_COUNT, &tags);
+        tags_expand_templates(exposable->on_click, (const char **)exposable->on_click, MOUSE_BTN_COUNT, &tags);
         tag_set_destroy(&tags);
     }
 
@@ -198,19 +193,17 @@ instantiate(const struct particle *particle, const struct tag_set *tags)
     long min = tag != NULL ? tag->min(tag) : 0;
     long max = tag != NULL ? tag->max(tag) : 0;
 
-    LOG_DBG("%s: value=%ld, min=%ld, max=%ld",
-            tag != NULL ? tag->name(tag) : "<no tag>", value, min, max);
+    LOG_DBG("%s: value=%ld, min=%ld, max=%ld", tag != NULL ? tag->name(tag) : "<no tag>", value, min, max);
 
     long fill_count = max == min ? 0 : p->width * value / (max - min);
     long empty_count = p->width - fill_count;
 
     struct eprivate *epriv = calloc(1, sizeof(*epriv));
-    epriv->count = (
-        1 +             /* Start marker */
-        fill_count +    /* Before current position */
-        1 +             /* Current position indicator */
-        empty_count +   /* After current position */
-        1);             /* End marker */
+    epriv->count = (1 +           /* Start marker */
+                    fill_count +  /* Before current position */
+                    1 +           /* Current position indicator */
+                    empty_count + /* After current position */
+                    1);           /* End marker */
 
     epriv->exposables = malloc(epriv->count * sizeof(epriv->exposables[0]));
 
@@ -259,8 +252,7 @@ instantiate(const struct particle *particle, const struct tag_set *tags)
 
     LOG_DBG("tag: %s, value: %ld, "
             "units-per-segment: %f, units-filled: %f, units-til-next: %f",
-            tag->name(tag), value,
-            units_per_segment, units_filled, units_til_next_segment);
+            tag->name(tag), value, units_per_segment, units_filled, units_til_next_segment);
 
 #endif
 
@@ -271,10 +263,8 @@ instantiate(const struct particle *particle, const struct tag_set *tags)
 }
 
 static struct particle *
-progress_bar_new(struct particle *common, const char *tag, int width,
-                 struct particle *start_marker, struct particle *end_marker,
-                 struct particle *fill, struct particle *empty,
-                 struct particle *indicator)
+progress_bar_new(struct particle *common, const char *tag, int width, struct particle *start_marker,
+                 struct particle *end_marker, struct particle *fill, struct particle *empty, struct particle *indicator)
 {
     struct private *priv = calloc(1, sizeof(*priv));
     priv->tag = strdup(tag);
@@ -308,15 +298,10 @@ from_conf(const struct yml_node *node, struct particle *common)
         .foreground = common->foreground,
     };
 
-    return progress_bar_new(
-        common,
-        yml_value_as_string(tag),
-        yml_value_as_int(length),
-        conf_to_particle(start, inherited),
-        conf_to_particle(end, inherited),
-        conf_to_particle(fill, inherited),
-        conf_to_particle(empty, inherited),
-        conf_to_particle(indicator, inherited));
+    return progress_bar_new(common, yml_value_as_string(tag), yml_value_as_int(length),
+                            conf_to_particle(start, inherited), conf_to_particle(end, inherited),
+                            conf_to_particle(fill, inherited), conf_to_particle(empty, inherited),
+                            conf_to_particle(indicator, inherited));
 }
 
 static bool

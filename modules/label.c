@@ -1,16 +1,14 @@
-#include <stdlib.h>
 #include <assert.h>
+#include <stdlib.h>
 
 #include <poll.h>
 
-#include "../config.h"
 #include "../config-verify.h"
+#include "../config.h"
 #include "../module.h"
 #include "../plugin.h"
 
-struct private {
-    struct particle *label;
-};
+struct private { struct particle *label; };
 
 static void
 destroy(struct module *mod)

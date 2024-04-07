@@ -26,17 +26,14 @@ chain_pop(keychain_t *chain)
     tll_pop_back(*chain);
 }
 
-const char *conf_err_prefix(
-    const keychain_t *chain, const struct yml_node *node);
-
+const char *conf_err_prefix(const keychain_t *chain, const struct yml_node *node);
 
 bool conf_verify_string(keychain_t *chain, const struct yml_node *node);
 bool conf_verify_int(keychain_t *chain, const struct yml_node *node);
 bool conf_verify_unsigned(keychain_t *chain, const struct yml_node *node);
 bool conf_verify_bool(keychain_t *chain, const struct yml_node *node);
 
-bool conf_verify_enum(keychain_t *chain, const struct yml_node *node,
-                      const char *values[], size_t count);
+bool conf_verify_enum(keychain_t *chain, const struct yml_node *node, const char *values[], size_t count);
 bool conf_verify_list(keychain_t *chain, const struct yml_node *node,
                       bool (*verify)(keychain_t *chain, const struct yml_node *node));
 bool conf_verify_dict(keychain_t *chain, const struct yml_node *node,

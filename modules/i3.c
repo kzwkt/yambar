@@ -1,27 +1,27 @@
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <assert.h>
 #include <threads.h>
+#include <unistd.h>
 
-#include <sys/types.h>
 #include <fcntl.h>
+#include <sys/types.h>
 
 #include <tllist.h>
 
 #define LOG_MODULE "i3"
 #define LOG_ENABLE_DBG 0
-#include "../log.h"
 #include "../bar/bar.h"
-#include "../config.h"
 #include "../config-verify.h"
+#include "../config.h"
+#include "../log.h"
 #include "../particles/dynlist.h"
 #include "../plugin.h"
 
-#include "i3-ipc.h"
 #include "i3-common.h"
+#include "i3-ipc.h"
 
-enum sort_mode {SORT_NONE, SORT_NATIVE, SORT_ASCENDING, SORT_DESCENDING};
+enum sort_mode { SORT_NONE, SORT_NATIVE, SORT_ASCENDING, SORT_DESCENDING };
 
 struct ws_content {
     char *name;
@@ -48,7 +48,8 @@ struct workspace {
     } window;
 };
 
-struct private {
+struct private
+{
     int left_spacing;
     int right_spacing;
 
@@ -105,10 +106,8 @@ workspace_from_json(const struct json_object *json, struct workspace *ws)
 {
     /* Always present */
     struct json_object *id, *name, *output;
-    if (!json_object_object_get_ex(json, "id", &id) ||
-        !json_object_object_get_ex(json, "name", &name) ||
-        !json_object_object_get_ex(json, "output", &output))
-    {
+    if (!json_object_object_get_ex(json, "id", &id) || !json_object_object_get_ex(json, "name", &name)
+        || !json_object_object_get_ex(json, "output", &output)) {
         LOG_ERR("workspace reply/event without 'name' and/or 'output' "
                 "properties");
         return false;
@@ -126,14 +125,12 @@ workspace_from_json(const struct json_object *json, struct workspace *ws)
 
     const char *name_as_string = json_object_get_string(name);
 
-    const size_t node_count = focus != NULL
-        ? json_object_array_length(focus)
-        : 0;
+    const size_t node_count = focus != NULL ? json_object_array_length(focus) : 0;
 
     const bool is_empty = node_count == 0;
     int name_as_int = workspace_name_as_int(name_as_string);
 
-    *ws = (struct workspace) {
+    *ws = (struct workspace){
         .id = json_object_get_int(id),
         .name = strdup(name_as_string),
         .name_as_int = name_as_int,
@@ -152,9 +149,12 @@ workspace_from_json(const struct json_object *json, struct workspace *ws)
 static void
 workspace_free_persistent(struct workspace *ws)
 {
-    free(ws->output); ws->output = NULL;
-    free(ws->window.title); ws->window.title = NULL;
-    free(ws->window.application); ws->window.application = NULL;
+    free(ws->output);
+    ws->output = NULL;
+    free(ws->window.title);
+    ws->window.title = NULL;
+    free(ws->window.application);
+    ws->window.application = NULL;
     ws->id = -1;
 }
 
@@ -162,20 +162,21 @@ static void
 workspace_free(struct workspace *ws)
 {
     workspace_free_persistent(ws);
-    free(ws->name); ws->name = NULL;
+    free(ws->name);
+    ws->name = NULL;
 }
 
 static void
 workspaces_free(struct private *m, bool free_persistent)
 {
-    tll_foreach(m->workspaces, it) {
+    tll_foreach(m->workspaces, it)
+    {
         if (free_persistent || !it->item.persistent) {
             workspace_free(&it->item);
             tll_remove(m->workspaces, it);
         }
     }
 }
-
 
 static void
 workspace_add(struct private *m, struct workspace ws)
@@ -187,7 +188,8 @@ workspace_add(struct private *m, struct workspace ws)
 
     case SORT_NATIVE:
         if (ws.name_as_int >= 0) {
-            tll_foreach(m->workspaces, it) {
+            tll_foreach(m->workspaces, it)
+            {
                 if (it->item.name_as_int < 0)
                     continue;
                 if (it->item.name_as_int > ws.name_as_int) {
@@ -202,7 +204,8 @@ workspace_add(struct private *m, struct workspace ws)
 
     case SORT_ASCENDING:
         if (ws.name_as_int >= 0) {
-            tll_foreach(m->workspaces, it) {
+            tll_foreach(m->workspaces, it)
+            {
                 if (it->item.name_as_int < 0)
                     continue;
                 if (it->item.name_as_int > ws.name_as_int) {
@@ -211,10 +214,9 @@ workspace_add(struct private *m, struct workspace ws)
                 }
             }
         } else {
-            tll_foreach(m->workspaces, it) {
-                if (strcoll(it->item.name, ws.name) > 0 ||
-                    it->item.name_as_int >= 0)
-                {
+            tll_foreach(m->workspaces, it)
+            {
+                if (strcoll(it->item.name, ws.name) > 0 || it->item.name_as_int >= 0) {
                     tll_insert_before(m->workspaces, it, ws);
                     return;
                 }
@@ -225,14 +227,16 @@ workspace_add(struct private *m, struct workspace ws)
 
     case SORT_DESCENDING:
         if (ws.name_as_int >= 0) {
-            tll_foreach(m->workspaces, it) {
+            tll_foreach(m->workspaces, it)
+            {
                 if (it->item.name_as_int < ws.name_as_int) {
                     tll_insert_before(m->workspaces, it, ws);
                     return;
                 }
             }
         } else {
-            tll_foreach(m->workspaces, it) {
+            tll_foreach(m->workspaces, it)
+            {
                 if (it->item.name_as_int >= 0)
                     continue;
                 if (strcoll(it->item.name, ws.name) < 0) {
@@ -249,7 +253,8 @@ workspace_add(struct private *m, struct workspace ws)
 static void
 workspace_del(struct private *m, int id)
 {
-    tll_foreach(m->workspaces, it) {
+    tll_foreach(m->workspaces, it)
+    {
         struct workspace *ws = &it->item;
 
         if (ws->id != id)
@@ -264,7 +269,8 @@ workspace_del(struct private *m, int id)
 static struct workspace *
 workspace_lookup(struct private *m, int id)
 {
-    tll_foreach(m->workspaces, it) {
+    tll_foreach(m->workspaces, it)
+    {
         struct workspace *ws = &it->item;
         if (ws->id == id)
             return ws;
@@ -275,7 +281,8 @@ workspace_lookup(struct private *m, int id)
 static struct workspace *
 workspace_lookup_by_name(struct private *m, const char *name)
 {
-    tll_foreach(m->workspaces, it) {
+    tll_foreach(m->workspaces, it)
+    {
         struct workspace *ws = &it->item;
         if (strcmp(ws->name, name) == 0)
             return ws;
@@ -339,13 +346,9 @@ workspace_update_or_add(struct private *m, const struct json_object *ws_json)
         if (json_object_object_get_ex(ws_json, "name", &_name)) {
             const char *name = json_object_get_string(_name);
             if (name != NULL) {
-                struct workspace *maybe_persistent =
-                    workspace_lookup_by_name(m, name);
+                struct workspace *maybe_persistent = workspace_lookup_by_name(m, name);
 
-                if (maybe_persistent != NULL &&
-                    maybe_persistent->persistent &&
-                    maybe_persistent->id < 0)
-                {
+                if (maybe_persistent != NULL && maybe_persistent->persistent && maybe_persistent->id < 0) {
                     already_exists = maybe_persistent;
                 }
             }
@@ -421,10 +424,9 @@ handle_workspace_event(int sock, int type, const struct json_object *json, void 
     bool is_reload = strcmp(change_str, "reload") == 0;
 
     struct json_object *current, *_current_id;
-    if ((!json_object_object_get_ex(json, "current", &current) ||
-        !json_object_object_get_ex(current, "id", &_current_id)) &&
-        !is_reload)
-    {
+    if ((!json_object_object_get_ex(json, "current", &current)
+         || !json_object_object_get_ex(current, "id", &_current_id))
+        && !is_reload) {
         LOG_ERR("workspace event without 'current' and/or 'id' properties");
         return false;
     }
@@ -452,10 +454,8 @@ handle_workspace_event(int sock, int type, const struct json_object *json, void 
 
     else if (is_focused) {
         struct json_object *old, *_old_id, *urgent;
-        if (!json_object_object_get_ex(json, "old", &old) ||
-            !json_object_object_get_ex(old, "id", &_old_id) ||
-            !json_object_object_get_ex(current, "urgent", &urgent))
-        {
+        if (!json_object_object_get_ex(json, "old", &old) || !json_object_object_get_ex(old, "id", &_old_id)
+            || !json_object_object_get_ex(current, "urgent", &urgent)) {
             LOG_ERR("workspace 'focused' event without 'old', 'name' and/or 'urgent' property");
             mtx_unlock(&mod->lock);
             return false;
@@ -467,7 +467,8 @@ handle_workspace_event(int sock, int type, const struct json_object *json, void 
         LOG_DBG("w: %s", w->name);
 
         /* Mark all workspaces on current's output invisible */
-        tll_foreach(m->workspaces, it) {
+        tll_foreach(m->workspaces, it)
+        {
             struct workspace *ws = &it->item;
             if (ws->output != NULL && strcmp(ws->output, w->output) == 0)
                 ws->visible = false;
@@ -501,7 +502,8 @@ handle_workspace_event(int sock, int type, const struct json_object *json, void 
 
         /* Re-add the workspace to ensure correct sorting */
         struct workspace ws = *w;
-        tll_foreach(m->workspaces, it) {
+        tll_foreach(m->workspaces, it)
+        {
             if (it->item.id == current_id) {
                 tll_remove(m->workspaces, it);
                 break;
@@ -588,7 +590,8 @@ handle_window_event(int sock, int type, const struct json_object *json, void *_m
 
     struct workspace *ws = NULL;
     size_t focused = 0;
-    tll_foreach(m->workspaces, it) {
+    tll_foreach(m->workspaces, it)
+    {
         if (it->item.focused) {
             ws = &it->item;
             focused++;
@@ -599,10 +602,8 @@ handle_window_event(int sock, int type, const struct json_object *json, void *_m
     assert(ws != NULL);
 
     struct json_object *container, *id, *name;
-    if (!json_object_object_get_ex(json, "container", &container) ||
-        !json_object_object_get_ex(container, "id", &id) ||
-        !json_object_object_get_ex(container, "name", &name))
-    {
+    if (!json_object_object_get_ex(json, "container", &container) || !json_object_object_get_ex(container, "id", &id)
+        || !json_object_object_get_ex(container, "name", &name)) {
         mtx_unlock(&mod->lock);
         LOG_ERR("window event without 'container' with 'id' and 'name'");
         return false;
@@ -645,18 +646,14 @@ handle_window_event(int sock, int type, const struct json_object *json, void *_m
     struct json_object *app_id;
     struct json_object *pid;
 
-    if (json_object_object_get_ex(container, "app_id", &app_id) &&
-        json_object_get_string(app_id) != NULL)
-    {
+    if (json_object_object_get_ex(container, "app_id", &app_id) && json_object_get_string(app_id) != NULL) {
         free(ws->window.application);
         ws->window.application = strdup(json_object_get_string(app_id));
         LOG_DBG("application: \"%s\", via 'app_id'", ws->window.application);
     }
 
     /* If PID has changed, update application name from /proc/<pid>/comm */
-    else if (json_object_object_get_ex(container, "pid", &pid) &&
-             ws->window.pid != json_object_get_int(pid))
-    {
+    else if (json_object_object_get_ex(container, "pid", &pid) && ws->window.pid != json_object_get_int(pid)) {
         ws->window.pid = json_object_get_int(pid);
 
         char path[64];
@@ -665,7 +662,8 @@ handle_window_event(int sock, int type, const struct json_object *json, void *_m
         int fd = open(path, O_RDONLY);
         if (fd == -1) {
             /* Application may simply have terminated */
-            free(ws->window.application); ws->window.application = NULL;
+            free(ws->window.application);
+            ws->window.application = NULL;
             ws->window.pid = -1;
 
             m->dirty = true;
@@ -837,7 +835,8 @@ content(struct module *mod)
     struct exposable *particles[tll_length(m->workspaces) + 1];
     struct exposable *current = NULL;
 
-    tll_foreach(m->workspaces, it) {
+    tll_foreach(m->workspaces, it)
+    {
         struct workspace *ws = &it->item;
         const struct ws_content *template = NULL;
 
@@ -853,21 +852,12 @@ content(struct module *mod)
             template = ws_content_for_name(m, "");
         }
 
-        const char *state =
-            ws->urgent ? "urgent" :
-            ws->visible ? ws->focused ? "focused" : "unfocused" :
-            "invisible";
+        const char *state = ws->urgent ? "urgent" : ws->visible ? ws->focused ? "focused" : "unfocused" : "invisible";
 
         LOG_DBG("name=%s (name-as-int=%d): visible=%s, focused=%s, urgent=%s, empty=%s, state=%s, "
                 "application=%s, title=%s, mode=%s",
-                ws->name, ws->name_as_int,
-                ws->visible ? "yes" : "no",
-                ws->focused ? "yes" : "no",
-                ws->urgent ? "yes" : "no",
-                ws->empty ? "yes" : "no",
-                state,
-                ws->window.application,
-                ws->window.title,
+                ws->name, ws->name_as_int, ws->visible ? "yes" : "no", ws->focused ? "yes" : "no",
+                ws->urgent ? "yes" : "no", ws->empty ? "yes" : "no", state, ws->window.application, ws->window.title,
                 m->mode);
 
         const char *name = ws->name;
@@ -902,12 +892,9 @@ content(struct module *mod)
         }
 
         if (template == NULL) {
-            LOG_WARN(
-                "no ws template for %s, and no default template available",
-                ws->name);
+            LOG_WARN("no ws template for %s, and no default template available", ws->name);
         } else {
-            particles[particle_count++] = template->content->instantiate(
-                template->content, &tags);
+            particles[particle_count++] = template->content->instantiate(template->content, &tags);
         }
 
         tag_set_destroy(&tags);
@@ -917,8 +904,7 @@ content(struct module *mod)
         particles[particle_count++] = current;
 
     mtx_unlock(&mod->lock);
-    return dynlist_exposable_new(
-        particles, particle_count, m->left_spacing, m->right_spacing);
+    return dynlist_exposable_new(particles, particle_count, m->left_spacing, m->right_spacing);
 }
 
 /* Maps workspace name to a content particle. */
@@ -928,10 +914,8 @@ struct i3_workspaces {
 };
 
 static struct module *
-i3_new(struct i3_workspaces workspaces[], size_t workspace_count,
-       int left_spacing, int right_spacing, enum sort_mode sort_mode,
-       size_t persistent_count,
-       const char *persistent_workspaces[static persistent_count],
+i3_new(struct i3_workspaces workspaces[], size_t workspace_count, int left_spacing, int right_spacing,
+       enum sort_mode sort_mode, size_t persistent_count, const char *persistent_workspaces[static persistent_count],
        bool strip_workspace_numbers)
 {
     struct private *m = calloc(1, sizeof(*m));
@@ -952,8 +936,7 @@ i3_new(struct i3_workspaces workspaces[], size_t workspace_count,
     m->sort_mode = sort_mode;
 
     m->persistent_count = persistent_count;
-    m->persistent_workspaces = calloc(
-        persistent_count, sizeof(m->persistent_workspaces[0]));
+    m->persistent_workspaces = calloc(persistent_count, sizeof(m->persistent_workspaces[0]));
 
     for (size_t i = 0; i < persistent_count; i++)
         m->persistent_workspaces[i] = strdup(persistent_workspaces[i]);
@@ -976,31 +959,26 @@ from_conf(const struct yml_node *node, struct conf_inherit inherited)
     const struct yml_node *right_spacing = yml_get_value(node, "right-spacing");
     const struct yml_node *sort = yml_get_value(node, "sort");
     const struct yml_node *persistent = yml_get_value(node, "persistent");
-    const struct yml_node *strip_workspace_number = yml_get_value(
-        node, "strip-workspace-numbers");
+    const struct yml_node *strip_workspace_number = yml_get_value(node, "strip-workspace-numbers");
 
-    int left = spacing != NULL ? yml_value_as_int(spacing) :
-        left_spacing != NULL ? yml_value_as_int(left_spacing) : 0;
-    int right = spacing != NULL ? yml_value_as_int(spacing) :
-        right_spacing != NULL ? yml_value_as_int(right_spacing) : 0;
+    int left = spacing != NULL ? yml_value_as_int(spacing) : left_spacing != NULL ? yml_value_as_int(left_spacing) : 0;
+    int right = spacing != NULL         ? yml_value_as_int(spacing)
+                : right_spacing != NULL ? yml_value_as_int(right_spacing)
+                                        : 0;
 
     const char *sort_value = sort != NULL ? yml_value_as_string(sort) : NULL;
-    enum sort_mode sort_mode =
-        sort_value == NULL ? SORT_NONE :
-        strcmp(sort_value, "none") == 0 ? SORT_NONE :
-        strcmp(sort_value, "native") == 0 ? SORT_NATIVE :
-        strcmp(sort_value, "ascending") == 0 ? SORT_ASCENDING : SORT_DESCENDING;
+    enum sort_mode sort_mode = sort_value == NULL                     ? SORT_NONE
+                               : strcmp(sort_value, "none") == 0      ? SORT_NONE
+                               : strcmp(sort_value, "native") == 0    ? SORT_NATIVE
+                               : strcmp(sort_value, "ascending") == 0 ? SORT_ASCENDING
+                                                                      : SORT_DESCENDING;
 
-    const size_t persistent_count =
-        persistent != NULL ? yml_list_length(persistent) : 0;
+    const size_t persistent_count = persistent != NULL ? yml_list_length(persistent) : 0;
     const char *persistent_workspaces[persistent_count];
 
     if (persistent != NULL) {
         size_t idx = 0;
-        for (struct yml_list_iter it = yml_list_iter(persistent);
-             it.node != NULL;
-             yml_list_next(&it), idx++)
-        {
+        for (struct yml_list_iter it = yml_list_iter(persistent); it.node != NULL; yml_list_next(&it), idx++) {
             persistent_workspaces[idx] = yml_value_as_string(it.node);
         }
     }
@@ -1008,38 +986,27 @@ from_conf(const struct yml_node *node, struct conf_inherit inherited)
     struct i3_workspaces workspaces[yml_dict_length(c)];
 
     size_t idx = 0;
-    for (struct yml_dict_iter it = yml_dict_iter(c);
-         it.key != NULL;
-         yml_dict_next(&it), idx++)
-    {
+    for (struct yml_dict_iter it = yml_dict_iter(c); it.key != NULL; yml_dict_next(&it), idx++) {
         workspaces[idx].name = yml_value_as_string(it.key);
         workspaces[idx].content = conf_to_particle(it.value, inherited);
     }
 
-    return i3_new(workspaces, yml_dict_length(c), left, right, sort_mode,
-                  persistent_count, persistent_workspaces,
-                  (strip_workspace_number != NULL
-                   ? yml_value_as_bool(strip_workspace_number) : false));
+    return i3_new(workspaces, yml_dict_length(c), left, right, sort_mode, persistent_count, persistent_workspaces,
+                  (strip_workspace_number != NULL ? yml_value_as_bool(strip_workspace_number) : false));
 }
 
 static bool
 verify_content(keychain_t *chain, const struct yml_node *node)
 {
     if (!yml_is_dict(node)) {
-        LOG_ERR(
-            "%s: must be a dictionary of workspace-name: particle mappings",
-            conf_err_prefix(chain, node));
+        LOG_ERR("%s: must be a dictionary of workspace-name: particle mappings", conf_err_prefix(chain, node));
         return false;
     }
 
-    for (struct yml_dict_iter it = yml_dict_iter(node);
-         it.key != NULL;
-         yml_dict_next(&it))
-    {
+    for (struct yml_dict_iter it = yml_dict_iter(node); it.key != NULL; yml_dict_next(&it)) {
         const char *key = yml_value_as_string(it.key);
         if (key == NULL) {
-            LOG_ERR("%s: key must be a string (a i3 workspace name)",
-                    conf_err_prefix(chain, it.key));
+            LOG_ERR("%s: key must be a string (a i3 workspace name)", conf_err_prefix(chain, it.key));
             return false;
         }
 
@@ -1055,8 +1022,7 @@ verify_content(keychain_t *chain, const struct yml_node *node)
 static bool
 verify_sort(keychain_t *chain, const struct yml_node *node)
 {
-    return conf_verify_enum(
-        chain, node, (const char *[]){"none", "native", "ascending", "descending"}, 4);
+    return conf_verify_enum(chain, node, (const char *[]){"none", "native", "ascending", "descending"}, 4);
 }
 
 static bool
@@ -1089,5 +1055,5 @@ const struct module_iface module_i3_iface = {
 };
 
 #if defined(CORE_PLUGINS_AS_SHARED_LIBRARIES)
-extern const struct module_iface iface __attribute__((weak, alias("module_i3_iface"))) ;
+extern const struct module_iface iface __attribute__((weak, alias("module_i3_iface")));
 #endif

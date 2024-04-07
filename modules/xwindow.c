@@ -1,29 +1,30 @@
+#include <assert.h>
+#include <errno.h>
+#include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
-#include <errno.h>
-#include <unistd.h>
 #include <threads.h>
-#include <libgen.h>
+#include <unistd.h>
 
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <sys/stat.h>
 
 #include <xcb/xcb.h>
 #include <xcb/xcb_aux.h>
 #include <xcb/xcb_event.h>
 
 #define LOG_MODULE "xwindow"
-#include "../log.h"
 #include "../bar/bar.h"
-#include "../config.h"
 #include "../config-verify.h"
+#include "../config.h"
+#include "../log.h"
 #include "../plugin.h"
 #include "../xcb.h"
 
-struct private {
+struct private
+{
     /* Accessed from bar thread only */
     struct particle *label;
 
@@ -48,23 +49,19 @@ static void
 update_active_window(struct private *m)
 {
     if (m->active_win != 0) {
-        xcb_void_cookie_t c = xcb_change_window_attributes_checked(
-            m->conn, m->active_win, XCB_CW_EVENT_MASK,
-            (const uint32_t []){XCB_EVENT_MASK_NO_EVENT});
+        xcb_void_cookie_t c = xcb_change_window_attributes_checked(m->conn, m->active_win, XCB_CW_EVENT_MASK,
+                                                                   (const uint32_t[]){XCB_EVENT_MASK_NO_EVENT});
 
         xcb_generic_error_t *e = xcb_request_check(m->conn, c);
         if (e != NULL) {
-            LOG_DBG(
-                "failed to de-register events on previous active window: %s",
-                xcb_error(e));
+            LOG_DBG("failed to de-register events on previous active window: %s", xcb_error(e));
             free(e);
         }
 
         m->active_win = 0;
     }
 
-    xcb_get_property_cookie_t c = xcb_get_property(
-        m->conn, 0, m->root_win, _NET_ACTIVE_WINDOW, XCB_ATOM_WINDOW, 0, 32);
+    xcb_get_property_cookie_t c = xcb_get_property(m->conn, 0, m->root_win, _NET_ACTIVE_WINDOW, XCB_ATOM_WINDOW, 0, 32);
 
     xcb_generic_error_t *e;
     xcb_get_property_reply_t *r = xcb_get_property_reply(m->conn, c, &e);
@@ -86,9 +83,8 @@ update_active_window(struct private *m)
     free(r);
 
     if (m->active_win != 0) {
-        xcb_change_window_attributes(
-            m->conn, m->active_win, XCB_CW_EVENT_MASK,
-            (const uint32_t []){XCB_EVENT_MASK_PROPERTY_CHANGE});
+        xcb_change_window_attributes(m->conn, m->active_win, XCB_CW_EVENT_MASK,
+                                     (const uint32_t[]){XCB_EVENT_MASK_PROPERTY_CHANGE});
     }
 }
 
@@ -105,8 +101,7 @@ update_application(struct module *mod)
     if (m->active_win == 0)
         return;
 
-    xcb_get_property_cookie_t c = xcb_get_property(
-        m->conn, 0, m->active_win, _NET_WM_PID, XCB_ATOM_CARDINAL, 0, 32);
+    xcb_get_property_cookie_t c = xcb_get_property(m->conn, 0, m->active_win, _NET_WM_PID, XCB_ATOM_CARDINAL, 0, 32);
 
     xcb_generic_error_t *e;
     xcb_get_property_reply_t *r = xcb_get_property_reply(m->conn, c, &e);
@@ -164,12 +159,11 @@ update_title(struct module *mod)
     if (m->active_win == 0)
         return;
 
-    xcb_get_property_cookie_t c1 = xcb_get_property(
-        m->conn, 0, m->active_win, _NET_WM_VISIBLE_NAME, UTF8_STRING, 0, 1000);
-    xcb_get_property_cookie_t c2 = xcb_get_property(
-        m->conn, 0, m->active_win, _NET_WM_NAME, UTF8_STRING, 0, 1000);
-    xcb_get_property_cookie_t c3 = xcb_get_property(
-        m->conn, 0, m->active_win, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 0, 1000);
+    xcb_get_property_cookie_t c1
+        = xcb_get_property(m->conn, 0, m->active_win, _NET_WM_VISIBLE_NAME, UTF8_STRING, 0, 1000);
+    xcb_get_property_cookie_t c2 = xcb_get_property(m->conn, 0, m->active_win, _NET_WM_NAME, UTF8_STRING, 0, 1000);
+    xcb_get_property_cookie_t c3
+        = xcb_get_property(m->conn, 0, m->active_win, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 0, 1000);
 
     xcb_generic_error_t *e1, *e2, *e3;
     xcb_get_property_reply_t *r1 = xcb_get_property_reply(m->conn, c1, &e1);
@@ -207,7 +201,7 @@ update_title(struct module *mod)
     free(r1);
     free(r2);
     free(r3);
- }
+}
 
 static int
 run(struct module *mod)
@@ -227,19 +221,16 @@ run(struct module *mod)
 
     /* Need a window(?) to be able to process events */
     m->monitor_win = xcb_generate_id(m->conn);
-    xcb_create_window(m->conn, screen->root_depth, m->monitor_win, screen->root,
-                      -1, -1, 1, 1,
-                      0,
-                      XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual,
-                      XCB_CW_OVERRIDE_REDIRECT, (const uint32_t []){1});
+    xcb_create_window(m->conn, screen->root_depth, m->monitor_win, screen->root, -1, -1, 1, 1, 0,
+                      XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->root_visual, XCB_CW_OVERRIDE_REDIRECT,
+                      (const uint32_t[]){1});
 
     xcb_map_window(m->conn, m->monitor_win);
 
     /* Register for property changes on root window. This allows us to
      * catch e.g. window switches etc */
-    xcb_change_window_attributes(
-        m->conn, screen->root, XCB_CW_EVENT_MASK,
-        (const uint32_t []){XCB_EVENT_MASK_PROPERTY_CHANGE});
+    xcb_change_window_attributes(m->conn, screen->root, XCB_CW_EVENT_MASK,
+                                 (const uint32_t[]){XCB_EVENT_MASK_PROPERTY_CHANGE});
 
     xcb_flush(m->conn);
 
@@ -252,8 +243,7 @@ run(struct module *mod)
 
     int xcb_fd = xcb_get_file_descriptor(m->conn);
     while (true) {
-        struct pollfd fds[] = {{.fd = mod->abort_fd, .events = POLLIN},
-                               {.fd = xcb_fd, .events = POLLIN}};
+        struct pollfd fds[] = {{.fd = mod->abort_fd, .events = POLLIN}, {.fd = xcb_fd, .events = POLLIN}};
         if (poll(fds, sizeof(fds) / sizeof(fds[0]), -1) < 0) {
             if (errno == EINTR)
                 continue;
@@ -267,10 +257,7 @@ run(struct module *mod)
             break;
         }
 
-        for (xcb_generic_event_t *_e = xcb_wait_for_event(m->conn);
-             _e != NULL;
-             _e = xcb_poll_for_event(m->conn))
-        {
+        for (xcb_generic_event_t *_e = xcb_wait_for_event(m->conn); _e != NULL; _e = xcb_poll_for_event(m->conn)) {
             switch (XCB_EVENT_RESPONSE_TYPE(_e)) {
             case 0:
                 LOG_ERR("XCB: %s", xcb_error((const xcb_generic_error_t *)_e));
@@ -278,18 +265,13 @@ run(struct module *mod)
 
             case XCB_PROPERTY_NOTIFY: {
                 xcb_property_notify_event_t *e = (xcb_property_notify_event_t *)_e;
-                if (e->atom == _NET_ACTIVE_WINDOW ||
-                    e->atom == _NET_CURRENT_DESKTOP)
-                {
+                if (e->atom == _NET_ACTIVE_WINDOW || e->atom == _NET_CURRENT_DESKTOP) {
                     /* Active desktop and/or window changed */
                     update_active_window(m);
                     update_application(mod);
                     update_title(mod);
                     mod->bar->refresh(mod->bar);
-                } else if (e->atom == _NET_WM_VISIBLE_NAME ||
-                           e->atom == _NET_WM_NAME ||
-                           e->atom == XCB_ATOM_WM_NAME)
-                {
+                } else if (e->atom == _NET_WM_VISIBLE_NAME || e->atom == _NET_WM_NAME || e->atom == XCB_ATOM_WM_NAME) {
                     assert(e->window == m->active_win);
                     update_title(mod);
                     mod->bar->refresh(mod->bar);

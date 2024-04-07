@@ -31,7 +31,8 @@ struct cpu_stats {
     uint32_t *cur_cores_nidle;
 };
 
-struct private {
+struct private
+{
     struct particle *template;
     uint16_t interval;
     size_t core_count;
@@ -69,28 +70,22 @@ get_cpu_nb_cores()
 }
 
 static bool
-parse_proc_stat_line(const char *line, uint32_t *user, uint32_t *nice,
-                     uint32_t *system, uint32_t *idle, uint32_t *iowait,
-                     uint32_t *irq, uint32_t *softirq, uint32_t *steal,
-                     uint32_t *guest, uint32_t *guestnice)
+parse_proc_stat_line(const char *line, uint32_t *user, uint32_t *nice, uint32_t *system, uint32_t *idle,
+                     uint32_t *iowait, uint32_t *irq, uint32_t *softirq, uint32_t *steal, uint32_t *guest,
+                     uint32_t *guestnice)
 {
     int32_t core_id;
     if (line[sizeof("cpu") - 1] == ' ') {
-        int read = sscanf(
-            line,
-            "cpu %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32
-            " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32,
-            user, nice, system, idle, iowait, irq, softirq, steal, guest,
-            guestnice);
+        int read = sscanf(line,
+                          "cpu %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32
+                          " %" SCNu32 " %" SCNu32 " %" SCNu32,
+                          user, nice, system, idle, iowait, irq, softirq, steal, guest, guestnice);
         return read == 10;
     } else {
-        int read = sscanf(
-            line,
-            "cpu%" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32
-            " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32
-            " %" SCNu32,
-            &core_id, user, nice, system, idle, iowait, irq, softirq, steal,
-            guest, guestnice);
+        int read = sscanf(line,
+                          "cpu%" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32
+                          " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32,
+                          &core_id, user, nice, system, idle, iowait, irq, softirq, steal, guest, guestnice);
         return read == 11;
     }
 }
@@ -98,18 +93,12 @@ parse_proc_stat_line(const char *line, uint32_t *user, uint32_t *nice,
 static uint8_t
 get_cpu_usage_percent(const struct cpu_stats *cpu_stats, int8_t core_idx)
 {
-    uint32_t prev_total =
-        cpu_stats->prev_cores_idle[core_idx + 1] +
-        cpu_stats->prev_cores_nidle[core_idx + 1];
+    uint32_t prev_total = cpu_stats->prev_cores_idle[core_idx + 1] + cpu_stats->prev_cores_nidle[core_idx + 1];
 
-    uint32_t cur_total =
-        cpu_stats->cur_cores_idle[core_idx + 1] +
-        cpu_stats->cur_cores_nidle[core_idx + 1];
+    uint32_t cur_total = cpu_stats->cur_cores_idle[core_idx + 1] + cpu_stats->cur_cores_nidle[core_idx + 1];
 
     double totald = cur_total - prev_total;
-    double nidled =
-        cpu_stats->cur_cores_nidle[core_idx + 1] -
-        cpu_stats->prev_cores_nidle[core_idx + 1];
+    double nidled = cpu_stats->cur_cores_nidle[core_idx + 1] - cpu_stats->prev_cores_nidle[core_idx + 1];
 
     double percent = (nidled * 100) / (totald + 1);
     return round(percent);
@@ -143,10 +132,8 @@ refresh_cpu_stats(struct cpu_stats *cpu_stats, size_t core_count)
 
     while ((read = getline(&line, &len, fp)) != -1 && core <= core_count) {
         if (strncmp(line, "cpu", sizeof("cpu") - 1) == 0) {
-            if (!parse_proc_stat_line(
-                    line, &user, &nice, &system, &idle, &iowait, &irq, &softirq,
-                    &steal, &guest, &guestnice))
-            {
+            if (!parse_proc_stat_line(line, &user, &nice, &system, &idle, &iowait, &irq, &softirq, &steal, &guest,
+                                      &guestnice)) {
                 LOG_ERR("unable to parse /proc/stat line");
                 goto exit;
             }
@@ -251,15 +238,11 @@ cpu_new(uint16_t interval, struct particle *template)
     p->interval = interval;
     p->core_count = nb_cores;
 
-    p->cpu_stats.prev_cores_nidle = calloc(
-        nb_cores + 1, sizeof(*p->cpu_stats.prev_cores_nidle));
-    p->cpu_stats.prev_cores_idle = calloc(
-        nb_cores + 1, sizeof(*p->cpu_stats.prev_cores_idle));
+    p->cpu_stats.prev_cores_nidle = calloc(nb_cores + 1, sizeof(*p->cpu_stats.prev_cores_nidle));
+    p->cpu_stats.prev_cores_idle = calloc(nb_cores + 1, sizeof(*p->cpu_stats.prev_cores_idle));
 
-    p->cpu_stats.cur_cores_nidle = calloc(
-        nb_cores + 1, sizeof(*p->cpu_stats.cur_cores_nidle));
-    p->cpu_stats.cur_cores_idle = calloc(
-        nb_cores + 1, sizeof(*p->cpu_stats.cur_cores_idle));
+    p->cpu_stats.cur_cores_nidle = calloc(nb_cores + 1, sizeof(*p->cpu_stats.cur_cores_nidle));
+    p->cpu_stats.cur_cores_idle = calloc(nb_cores + 1, sizeof(*p->cpu_stats.cur_cores_idle));
 
     struct module *mod = module_common_new();
     mod->private = p;
@@ -276,9 +259,7 @@ from_conf(const struct yml_node *node, struct conf_inherit inherited)
     const struct yml_node *interval = yml_get_value(node, "poll-interval");
     const struct yml_node *c = yml_get_value(node, "content");
 
-    return cpu_new(
-        interval == NULL ? min_poll_interval : yml_value_as_int(interval),
-        conf_to_particle(c, inherited));
+    return cpu_new(interval == NULL ? min_poll_interval : yml_value_as_int(interval), conf_to_particle(c, inherited));
 }
 
 static bool
@@ -288,8 +269,7 @@ conf_verify_poll_interval(keychain_t *chain, const struct yml_node *node)
         return false;
 
     if (yml_value_as_int(node) < min_poll_interval) {
-        LOG_ERR("%s: interval value cannot be less than %ldms",
-                conf_err_prefix(chain, node), min_poll_interval);
+        LOG_ERR("%s: interval value cannot be less than %ldms", conf_err_prefix(chain, node), min_poll_interval);
         return false;
     }
 
