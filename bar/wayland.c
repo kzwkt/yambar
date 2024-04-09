@@ -765,7 +765,7 @@ create_surface(struct wayland_backend *backend)
 
     wl_surface_add_listener(backend->surface, &surface_listener, backend);
 
-    enum zwlr_layer_shell_v1_layer layer;
+    enum zwlr_layer_shell_v1_layer layer = ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
 
     switch (bar->layer) {
     case BAR_LAYER_BACKGROUND:
