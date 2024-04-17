@@ -1,6 +1,6 @@
 # Changelog
 
-* [Unreleased](#unreleased)
+* [1.11.0](#1-11-0)
 * [1.10.0](#1-10-0)
 * [1.9.0](#1-9-0)
 * [1.8.0](#1-8-0)
@@ -11,7 +11,8 @@
 * [1.5.0](#1-5-0)
 
 
-## Unreleased
+## 1.11.0
+
 ### Added
 
 * battery: current smoothing, for improved discharge estimates.
@@ -35,8 +36,6 @@
 [355]: https://codeberg.org/dnkl/yambar/pulls/355
 
 
-### Deprecated
-### Removed
 ### Fixed
 
 * Compiler error _‘fmt’ may be used uninitialized_ ([#311][311]).
@@ -63,8 +62,19 @@
 [369]: https://codeberg.org/dnkl/yambar/issues/369
 
 
-### Security
 ### Contributors
+
+* Delgan
+* Haden Collins
+* Jordan Isaacs
+* kotyk
+* Leonardo Hernández Hernández
+* oob
+* rdbo
+* Sertonix
+* steovd
+* Väinö Mäkelä
+* Yiyu Zhou
 
 
 ## 1.10.0
