@@ -6,6 +6,7 @@ steps:
         branch: [master, releases/*]
     image: alpine:latest
     commands:
+      - apk add openssl
       - apk add python3
       - apk add py3-pip
       - python3 -m venv codespell-venv
