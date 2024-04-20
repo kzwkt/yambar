@@ -670,7 +670,7 @@ handle_address(struct module *mod, uint16_t type, const struct ifaddrmsg *msg, s
     }
 
     if (iface == NULL) {
-        LOG_ERR("failed to find network interface with index %d. Probaly a yambar bug", msg->ifa_index);
+        LOG_ERR("failed to find network interface with index %d. Probably a yambar bug", msg->ifa_index);
         return;
     }
 
