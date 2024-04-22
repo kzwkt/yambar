@@ -595,6 +595,7 @@ handle_link(struct module *mod, uint16_t type, const struct ifinfomsg *msg, size
             iface->name = strdup((const char *)RTA_DATA(attr));
             LOG_DBG("%s: index=%d", iface->name, iface->index);
             mtx_unlock(&mod->lock);
+            break;
         case IFLA_OPERSTATE: {
             uint8_t operstate = *(const uint8_t *)RTA_DATA(attr);
             if (iface->state == operstate)

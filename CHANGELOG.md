@@ -18,6 +18,12 @@
 ### Deprecated
 ### Removed
 ### Fixed
+
+* network: fix missing break in switch statement([#377][377])
+
+[377]: https://codeberg.org/dnkl/yambar/issues/377
+
+
 ### Security
 ### Contributors
 
