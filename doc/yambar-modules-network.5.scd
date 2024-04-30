@@ -101,17 +101,23 @@ address per network interface.
 
 # EXAMPLES
 
+Display all Ethernet (including WLAN) devices. This excludes loopback,
+bridges etc.
+
 ```
 bar:
   left:
     - network:
         content:
           map:
-            default:
-              string: {text: "{name}: {state} ({ipv4})"}
             conditions:
-              ipv4 == "":
-                string: {text: "{name}: {state}"}
+              type == ether || type == wlan:
+                map:
+                  default:
+                    string: {text: "{name}: {state} ({ipv4})"}
+                  conditions:
+                    ipv4 == "":
+                      string: {text: "{name}: {state}"}
 ```
 
 # SEE ALSO
