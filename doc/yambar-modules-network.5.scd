@@ -25,6 +25,12 @@ address per network interface.
 :  string
 :  Interface type (*ether*, *wlan*, *loopback*, or *ARPHRD_NNN*, where
    *N* is a number).
+|  kind
+:  string
+:  Interface kind. Empty for non-virtual interfaces. For virtual
+   interfaces, this value is taken from the _IFLA\_INFO\_KIND_ netlink
+   attribute. Examples of valid values are *bond*, *bridge*, *gre*, *tun*
+   and *veth*.
 |  index
 :  int
 :  Network interface index
