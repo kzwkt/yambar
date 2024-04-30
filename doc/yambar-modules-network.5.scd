@@ -21,6 +21,10 @@ address per network interface.
 |  name
 :  string
 :  Network interface name
+|  type
+:  string
+:  Interface type (*ether*, *wlan*, *loopback*, or *ARPHRD_NNN*, where
+   *N* is a number).
 |  index
 :  int
 :  Network interface index

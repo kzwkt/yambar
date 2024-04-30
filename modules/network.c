@@ -17,6 +17,7 @@
 #include <arpa/inet.h>
 #include <linux/genetlink.h>
 #include <linux/if.h>
+#include <linux/if_arp.h>
 #include <linux/netlink.h>
 #include <linux/nl80211.h>
 #include <linux/rtnetlink.h>
@@ -24,7 +25,7 @@
 #include <tllist.h>
 
 #define LOG_MODULE "network"
-#define LOG_ENABLE_DBG 0
+#define LOG_ENABLE_DBG 1
 #include "../bar/bar.h"
 #include "../config-verify.h"
 #include "../config.h"
@@ -52,6 +53,7 @@ struct af_addr {
 
 struct iface {
     char *name;
+    char *type;
 
     uint32_t get_stats_seq_nr;
 
@@ -104,6 +106,7 @@ free_iface(struct iface iface)
 {
     tll_free(iface.addrs);
     free(iface.ssid);
+    free(iface.type);
     free(iface.name);
 }
 
@@ -207,6 +210,7 @@ content(struct module *mod)
         struct tag_set tags = {
             .tags = (struct tag *[]){
                 tag_new_string(mod, "name", iface->name),
+                tag_new_string(mod, "type", iface->type),
                 tag_new_int(mod, "index", iface->index),
                 tag_new_bool(mod, "carrier", iface->carrier),
                 tag_new_string(mod, "state", state),
@@ -221,7 +225,7 @@ content(struct module *mod)
                 tag_new_float(mod, "dl-speed", iface->dl_speed),
                 tag_new_float(mod, "ul-speed", iface->ul_speed),
             },
-            .count = 14,
+            .count = 15,
         };
         exposables[idx++] = m->label->instantiate(m->label, &tags);
         tag_set_destroy(&tags);
@@ -549,6 +553,7 @@ send_nl80211_get_scan(struct private *m)
     return true;
 }
 
+
 static void
 handle_link(struct module *mod, uint16_t type, const struct ifinfomsg *msg, size_t len)
 {
@@ -581,9 +586,31 @@ handle_link(struct module *mod, uint16_t type, const struct ifinfomsg *msg, size
     }
 
     if (iface == NULL) {
+        char *type = NULL;
+
+        switch (msg->ifi_type) {
+        case ARPHRD_ETHER:
+            type = strdup("ether");
+            break;
+
+        case ARPHRD_LOOPBACK:
+            type = strdup("loopback");
+            break;
+
+        case ARPHRD_IEEE80211:
+            type = strdup("wlan");
+            break;
+
+        default:
+            if (asprintf(&type, "ARPHRD_%hu", msg->ifi_type) < 0)
+                type = strdup("unknown");
+            break;
+        }
+
         mtx_lock(&mod->lock);
         tll_push_back(m->ifaces, ((struct iface){
                                      .index = msg->ifi_index,
+                                     .type = type,
                                      .state = IF_OPER_DOWN,
                                      .addrs = tll_init(),
                                  }));
@@ -596,9 +623,10 @@ handle_link(struct module *mod, uint16_t type, const struct ifinfomsg *msg, size
         case IFLA_IFNAME:
             mtx_lock(&mod->lock);
             iface->name = strdup((const char *)RTA_DATA(attr));
-            LOG_DBG("%s: index=%d", iface->name, iface->index);
+            LOG_DBG("%s: index=%d, type=%s", iface->name, iface->index, iface->type);
             mtx_unlock(&mod->lock);
             break;
+
         case IFLA_OPERSTATE: {
             uint8_t operstate = *(const uint8_t *)RTA_DATA(attr);
             if (iface->state == operstate)

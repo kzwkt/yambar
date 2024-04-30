@@ -18,8 +18,10 @@
 * environment variable substitution in config files ([#96][96]).
 * Log output now respects the [`NO_COLOR`](http://no-color.org/)
   environment variable.
+* network: `type` tag ([#380][380]).
 
 [96]: https://codeberg.org/dnkl/yambar/issues/96
+[380]: https://codeberg.org/dnkl/yambar/issues/380
 
 
 ### Changed
