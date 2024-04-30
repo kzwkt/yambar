@@ -1370,6 +1370,8 @@ parse_genl_reply(struct module *mod, const struct nlmsghdr *hdr, size_t len)
                     continue;
 
                 LOG_DBG("%s: got interface information", iface->name);
+                free(iface->type);
+                iface->type = strdup("wlan");
                 foreach_nlattr(mod, iface, genl, msg_size, &handle_nl80211_new_interface, NULL);
                 break;
 
