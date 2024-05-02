@@ -129,7 +129,7 @@ refresh_device_stats(struct private *m)
 
     while ((read = getline(&line, &len, fp)) != -1) {
         /*
-         * For an explanation of the fields bellow, see
+         * For an explanation of the fields below, see
          * https://www.kernel.org/doc/Documentation/ABI/testing/procfs-diskstats
          */
         uint8_t major_number = 0;

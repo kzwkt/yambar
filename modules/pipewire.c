@@ -33,7 +33,7 @@ struct output_informations {
     uint32_t device_id;
     uint32_t card_profile_device_id;
 
-    /* informations */
+    /* information */
     bool muted;
     uint16_t linear_volume; /* classic volume */
     uint16_t cubic_volume;  /* volume a la pulseaudio */
@@ -333,7 +333,7 @@ device_events_param(void *userdata, int seq, uint32_t id, uint32_t index, uint32
     X_FREE_SET(route->icon_name, X_STRDUP(data.icon_name));
     route->direction = data.direction;
 
-    /* set missing informations if possible */
+    /* set missing information if possible */
     struct private *private = device->data->module->private;
     struct node *binded_node = NULL;
     struct output_informations *output_informations = NULL;
@@ -358,7 +358,7 @@ device_events_param(void *userdata, int seq, uint32_t id, uint32_t index, uint32
     if (output_informations->card_profile_device_id != route->profile_device_id)
         return;
 
-    /* Update missing informations */
+    /* Update missing information */
     X_FREE_SET(output_informations->form_factor, X_STRDUP(route->form_factor));
     X_FREE_SET(output_informations->icon, X_STRDUP(route->icon_name));
 
@@ -384,7 +384,7 @@ node_events_info(void *userdata, struct pw_node_info const *info)
         for (size_t i = 0; i < info->n_params; ++i) {
             if (info->params[i].id == SPA_PARAM_Props) {
                 void *target_node = (node_data->is_sink ? data->node_sink : data->node_source);
-                /* Found it, will emit a param event, the parem will then be handled
+                /* Found it, will emit a param event, the param will then be handled
                  * in node_events_param */
                 pw_node_enum_params(target_node, 0, info->params[i].id, 0, -1, NULL);
                 break;
@@ -419,7 +419,7 @@ node_events_info(void *userdata, struct pw_node_info const *info)
             output_informations->card_profile_device_id = value;
         }
 
-        /* Device's informations has an more important priority than node's informations */
+        /* Device's information has an more important priority than node's information */
         /* icon_name */
         struct route *route = node_find_route(data, node_data->is_sink);
         if (route != NULL && route->icon_name != NULL)
@@ -659,7 +659,7 @@ static void
 try_to_bind_node(struct node_data *node_data, char const *target_name, struct node **target_node, void **target_proxy,
                  struct spa_hook *target_listener)
 {
-    /* profile deactived */
+    /* profile deactivated */
     if (target_name == NULL)
         return;
 

@@ -28,7 +28,7 @@
 #define max(x, y) ((x) > (y) ? (x) : (y))
 
 /*
- * Calculate total width of left/center/rigth groups.
+ * Calculate total width of left/center/right groups.
  * Note: begin_expose() must have been called
  */
 static void

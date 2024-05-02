@@ -12,7 +12,7 @@
 #  {aur}     int   number of aur packages
 #  {pkg}     int   sum of both
 #
-# Exemples configuration:
+# Examples configuration:
 #  - script:
 #      path: /absolute/path/to/pacman.sh
 #      args: []

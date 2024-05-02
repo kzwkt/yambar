@@ -12,7 +12,7 @@ steps:
       - python3 -m venv codespell-venv
       - source codespell-venv/bin/activate
       - pip install codespell
-      - codespell README.md CHANGELOG.md *.c *.h doc/*.scd
+      - codespell README.md CHANGELOG.md *.c *.h doc/*.scd bar decorations modules particles examples
       - deactivate
 
   - name: subprojects

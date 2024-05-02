@@ -19,7 +19,7 @@
 #
 # Now the fun part
 #
-# Exemple configuration:
+# Example configuration:
 #
 #     - script:
 #         path: /absolute/path/to/dwl-tags.sh

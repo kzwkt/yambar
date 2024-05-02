@@ -231,7 +231,7 @@ process_line(char *line, struct module *module)
                 /* No need to check error IMHO */
                 *target = strtoul(string, NULL, 10);
 
-                /* Populate informations */
+                /* Populate information */
                 if (index == 6) {
                     for (size_t id = 1; id <= private->number_of_tags; ++id) {
                         uint32_t mask = 1 << (id - 1);
