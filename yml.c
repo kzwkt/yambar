@@ -366,6 +366,44 @@ format_error(enum yml_error err, const struct yml_node *parent, const struct yml
     return err_str;
 }
 
+static char *
+replace_env_variables(const char *str, size_t len)
+{
+    char *result = strndup(str, len);
+    char *start, *end, *key, *env_value;
+    char* prefix = "${";
+    char* suffix = "}";
+    size_t pref_len = 2;
+    size_t suff_len = 1;
+    size_t key_len;
+
+    while ((start = strstr(result, prefix)) && (end = strstr(start, suffix))) {
+        key_len = end - start - pref_len;
+        key = strndup(start + pref_len, key_len);
+        env_value = getenv(key);
+
+        if (env_value) {
+            size_t result_len = strlen(result);
+            size_t new_len = result_len - key_len - pref_len - suff_len + strlen(env_value);
+            char *new_result = malloc(new_len + 1);
+
+            strncpy(new_result, result, start - result);
+            new_result[start - result] = '\0';
+            strcat(new_result, env_value);
+            strcat(new_result, end + 1);
+
+            free(result);
+            result = new_result;
+        } else {
+            memmove(start, end + 1, strlen(end + 1) + 1);
+        }
+
+        free(key);
+    }
+
+    return result;
+}
+
 struct yml_node *
 yml_load(FILE *yml, char **error)
 {
@@ -456,7 +494,7 @@ yml_load(FILE *yml, char **error)
         case YAML_SCALAR_EVENT: {
             struct yml_node *new_scalar = calloc(1, sizeof(*new_scalar));
             new_scalar->type = SCALAR;
-            new_scalar->scalar.value = strndup((const char *)event.data.scalar.value, event.data.scalar.length);
+            new_scalar->scalar.value = replace_env_variables((const char *)event.data.scalar.value, event.data.scalar.length);
 
             enum yml_error err = add_node(n, new_scalar, event.start_mark);
             if (err != YML_ERR_NONE) {

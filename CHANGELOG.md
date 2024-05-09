@@ -14,6 +14,11 @@
 
 ## Unreleased
 ### Added
+
+* environment variable substitution in config files ([#388][388]).
+
+[388]: https://codeberg.org/dnkl/yambar/issues/388
+
 ### Changed
 
 * `river`: expand to an empty list of particles when river is not
