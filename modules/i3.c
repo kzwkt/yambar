@@ -514,7 +514,6 @@ handle_workspace_event(int sock, int type, const struct json_object *json, void 
 
     else if (is_move) {
         struct workspace *w = workspace_lookup(m, current_id);
-        assert(w != NULL);
 
         struct json_object *_current_output;
         if (!json_object_object_get_ex(current, "output", &_current_output)) {
@@ -522,16 +521,22 @@ handle_workspace_event(int sock, int type, const struct json_object *json, void 
             mtx_unlock(&mod->lock);
             return false;
         }
+        const char *current_output_string = json_object_get_string(_current_output);
 
-        free(w->output);
-        w->output = strdup(json_object_get_string(_current_output));
+        /* Ignore fallback_output ("For when there's no connected outputs") */
+        if (strcmp(current_output_string, "FALLBACK") != 0) {
 
-        /*
-         * If the moved workspace was focused, schedule a full update because
-         * visibility for other workspaces may have changed.
-         */
-        if (w->focused) {
-            i3_send_pkg(sock, I3_IPC_MESSAGE_TYPE_GET_WORKSPACES, NULL);
+            assert(w != NULL);
+            free(w->output);
+            w->output = strdup(current_output_string);
+
+            /*
+             * If the moved workspace was focused, schedule a full update because
+             * visibility for other workspaces may have changed.
+             */
+            if (w->focused) {
+                i3_send_pkg(sock, I3_IPC_MESSAGE_TYPE_GET_WORKSPACES, NULL);
+            }
         }
     }
 
