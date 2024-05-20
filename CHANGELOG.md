@@ -15,6 +15,13 @@
 ## Unreleased
 ### Added
 ### Changed
+
+* `river`: expand to an empty list of particles when river is not
+  running ([#384][384]).
+
+[384]: https://codeberg.org/dnkl/yambar/issues/384
+
+
 ### Deprecated
 ### Removed
 ### Fixed

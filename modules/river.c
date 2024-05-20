@@ -52,6 +52,7 @@ struct seat {
 struct private
 {
     struct module *mod;
+    bool is_running;
     struct zxdg_output_manager_v1 *xdg_output_manager;
     struct zriver_status_manager_v1 *status_manager;
     struct particle *template;
@@ -87,6 +88,11 @@ content(struct module *mod)
     const char *output_bar_is_on = mod->bar->output_name(mod->bar);
 
     mtx_lock(&m->mod->lock);
+
+    if (!m->is_running) {
+        mtx_unlock(&m->mod->lock);
+        return dynlist_exposable_new(NULL, 0, 0, 0);
+    }
 
     uint32_t urgent = 0;
     uint32_t occupied = 0;
@@ -684,6 +690,8 @@ run(struct module *mod)
         LOG_ERR("river does not appear to be running");
         goto out;
     }
+
+    m->is_running = true;
 
     wl_display_roundtrip(display);
 
