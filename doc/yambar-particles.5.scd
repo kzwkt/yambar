@@ -214,6 +214,11 @@ content:
   - string: ...
 ```
 
+Note that the short form has a hard-coded *right-spacing* of 2. This
+cannot be changed. If you want a different spacing, you must use an
+explicit list particle (i.e. the long form).
+
+
 # MAP
 
 This particle maps the values of a specific tag to different
