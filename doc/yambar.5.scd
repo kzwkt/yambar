@@ -24,7 +24,7 @@ types that are frequently used:
 	- 00ff00ff: green, no transparency
 	- ff000099: red, semi-transparent
 - *environment reference*: a string that contains format ${VAR}. This will be
-  replaced by the value of the environment variable VAR. Example:	
+  replaced by the value of the environment variable VAR. Example:
 	- ${HOME}
 	- ${HOME}/.config/yambar
 	- ENV is ${ENV}, ENV2 is ${ENV2}
