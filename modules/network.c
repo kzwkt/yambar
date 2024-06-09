@@ -119,7 +119,10 @@ destroy(struct module *mod)
     if (m->urandom_fd >= 0)
         close(m->urandom_fd);
 
-    tll_foreach(m->ifaces, it) free_iface(it->item);
+    tll_foreach(m->ifaces, it) {
+        free_iface(it->item);
+        tll_remove(m->ifaces, it);
+    }
 
     free(m);
     module_default_destroy(mod);
