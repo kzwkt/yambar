@@ -370,14 +370,17 @@ static char *
 replace_env_variables(const char *str, size_t len)
 {
     char *result = strndup(str, len);
-    char *start, *end, *key, *env_value;
-    char* prefix = "${";
-    char* suffix = "}";
-    size_t pref_len = 2;
-    size_t suff_len = 1;
+    char *start, *key;
+    const char *end, *env_value;
+    const char* prefix = "${";
+    const char* suffix = "}";
+    const size_t pref_len = 2;
+    const size_t suff_len = 1;
     size_t key_len;
 
-    while ((start = strstr(result, prefix)) && (end = strstr(start, suffix))) {
+    while ((start = strstr(result, prefix)) != NULL &&
+           (end = strstr(start, suffix)) != NULL)
+    {
         key_len = end - start - pref_len;
         key = strndup(start + pref_len, key_len);
         env_value = getenv(key);
