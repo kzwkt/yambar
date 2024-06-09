@@ -15,9 +15,10 @@
 ## Unreleased
 ### Added
 
-* environment variable substitution in config files ([#388][388]).
+* environment variable substitution in config files ([#96][96]).
 
-[388]: https://codeberg.org/dnkl/yambar/issues/388
+[96]: https://codeberg.org/dnkl/yambar/issues/96
+
 
 ### Changed
 
