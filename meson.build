@@ -4,13 +4,15 @@ project('yambar', 'c',
         meson_version: '>=0.59.0',
         default_options: ['c_std=c18',
                           'warning_level=1',
-                          'werror=true',
                           'b_ndebug=if-release'])
 
 is_debug_build = get_option('buildtype').startswith('debug')
 plugs_as_libs = get_option('core-plugins-as-shared-libraries')
 
 cc = meson.get_compiler('c')
+cc_flags = [
+  '-Werror=all'
+  ]
 
 if cc.has_function('memfd_create',
                    args: ['-D_GNU_SOURCE=200809L'],
@@ -75,7 +77,12 @@ backend_wayland = wayland_client.found() and wayland_cursor.found()
 tllist = dependency('tllist', version: '>=1.0.1', fallback: 'tllist')
 fcft = dependency('fcft', version: ['>=3.0.0', '<4.0.0'], fallback: 'fcft')
 
+# DBus dependency. Used by 'modules/mpris'
+sdbus_library = dependency('libsystemd', 'libelogind', 'basu', required: get_option('plugin-mpris'))
+sdbus = declare_dependency(compile_args: ['-DHAVE_' + sdbus_library.name().to_upper()], dependencies:[sdbus_library])
+
 add_project_arguments(
+  cc_flags +
   ['-D_GNU_SOURCE'] +
   (is_debug_build ? ['-D_DEBUG'] : []) +
   (backend_x11 ? ['-DENABLE_X11'] : []) +
@@ -180,6 +187,7 @@ summary(
     'Foreign toplevel (window tracking for Wayland)': plugin_foreign_toplevel_enabled,
     'Memory monitoring': plugin_mem_enabled,
     'Music Player Daemon (MPD)': plugin_mpd_enabled,
+    'Media Player Remote Interface Specificaion (MPRIS)': plugin_mpris_enabled,
     'i3+Sway': plugin_i3_enabled,
     'Label': plugin_label_enabled,
     'Network monitoring': plugin_network_enabled,

@@ -57,6 +57,9 @@ EXTERN_MODULE(mem);
 #if defined(HAVE_PLUGIN_mpd)
 EXTERN_MODULE(mpd);
 #endif
+#if defined(HAVE_PLUGIN_mpris)
+EXTERN_MODULE(mpris);
+#endif
 #if defined(HAVE_PLUGIN_i3)
 EXTERN_MODULE(i3);
 #endif
@@ -192,6 +195,9 @@ static void __attribute__((constructor)) init(void)
 #endif
 #if defined(HAVE_PLUGIN_mpd)
     REGISTER_CORE_MODULE(mpd, mpd);
+#endif
+#if defined(HAVE_PLUGIN_mpris)
+    REGISTER_CORE_MODULE(mpris, mpris);
 #endif
 #if defined(HAVE_PLUGIN_i3)
     REGISTER_CORE_MODULE(i3, i3);

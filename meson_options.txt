@@ -26,6 +26,8 @@ option('plugin-mem', type: 'feature', value: 'auto',
        description: 'Memory monitoring support')
 option('plugin-mpd', type: 'feature', value: 'auto',
        description: 'Music Player Daemon (MPD) support')
+option('plugin-mpris', type: 'feature', value: 'enabled',
+       description: 'Media Player Remote Interface Specificaion (MPRIS) support')
 option('plugin-i3', type: 'feature', value: 'auto',
        description: 'i3+Sway support')
 option('plugin-label', type: 'feature', value: 'auto',
