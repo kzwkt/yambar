@@ -39,9 +39,15 @@ log_init(enum log_colorize _colorize, bool _do_syslog, enum log_facility syslog_
         [LOG_FACILITY_DAEMON] = LOG_DAEMON,
     };
 
-    colorize = _colorize == LOG_COLORIZE_NEVER    ? false
-               : _colorize == LOG_COLORIZE_ALWAYS ? true
-                                                  : isatty(STDERR_FILENO);
+    /* Don't use colors if NO_COLOR is defined and not empty */
+    const char *no_color_str = getenv("NO_COLOR");
+    const bool no_color = no_color_str != NULL && no_color_str[0] != '\0';
+
+    colorize = _colorize == LOG_COLORIZE_NEVER
+        ? false
+        : _colorize == LOG_COLORIZE_ALWAYS
+            ? true
+            : !no_color && isatty(STDERR_FILENO);
     do_syslog = _do_syslog;
     log_level = _log_level;
 

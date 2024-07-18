@@ -16,6 +16,8 @@
 ### Added
 
 * environment variable substitution in config files ([#96][96]).
+* Log output now respects the [`NO_COLOR`](http://no-color.org/)
+  environment variable.
 
 [96]: https://codeberg.org/dnkl/yambar/issues/96
 
