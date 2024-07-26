@@ -9,6 +9,7 @@ enum map_op {
     MAP_OP_GT,
     MAP_OP_SELF,
     MAP_OP_NOT,
+    MAP_OP_LIKE,
 
     MAP_OP_AND,
     MAP_OP_OR,

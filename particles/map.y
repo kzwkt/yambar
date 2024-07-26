@@ -35,27 +35,27 @@ result: condition { MAP_CONDITION_PARSE_RESULT = $<condition>1; };
 condition:
          WORD {
          $<condition>$ = malloc(sizeof(struct map_condition));
-         $<condition>$->tag = $<str>1; 
+         $<condition>$->tag = $<str>1;
          $<condition>$->op = MAP_OP_SELF;
          }
          |
          WORD CMP_OP WORD {
          $<condition>$ = malloc(sizeof(struct map_condition));
-         $<condition>$->tag = $<str>1; 
+         $<condition>$->tag = $<str>1;
          $<condition>$->op = $<op>2;
-         $<condition>$->value = $<str>3; 
+         $<condition>$->value = $<str>3;
          }
          |
          WORD CMP_OP STRING {
          $<condition>$ = malloc(sizeof(struct map_condition));
-         $<condition>$->tag = $<str>1; 
+         $<condition>$->tag = $<str>1;
          $<condition>$->op = $<op>2;
-         $<condition>$->value = $<str>3; 
+         $<condition>$->value = $<str>3;
          }
          |
          L_PAR condition R_PAR { $<condition>$ = $<condition>2; }
          |
-         NOT condition { 
+         NOT condition {
          $<condition>$ = malloc(sizeof(struct map_condition));
          $<condition>$->cond1 = $<condition>2;
          $<condition>$->op = MAP_OP_NOT;
@@ -79,7 +79,7 @@ static char const*
 token_to_str(yysymbol_kind_t tkn)
 {
     switch (tkn) {
-    case YYSYMBOL_CMP_OP: return "==, !=, <=, <, >=, >";
+    case YYSYMBOL_CMP_OP: return "==, !=, <=, <, >=, >, ~~";
     case YYSYMBOL_BOOL_OP: return "||, &&";
     case YYSYMBOL_L_PAR: return "(";
     case YYSYMBOL_R_PAR: return ")";

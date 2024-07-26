@@ -69,6 +69,7 @@ void yyerror(const char *s);
 \<                      yylval.op = MAP_OP_LT; return CMP_OP;
 >=                      yylval.op = MAP_OP_GE; return CMP_OP;
 >                       yylval.op = MAP_OP_GT; return CMP_OP;
+~~                      yylval.op = MAP_OP_LIKE; return CMP_OP;
 &&                      yylval.op = MAP_OP_AND; return BOOL_OP;
 \|\|                    yylval.op = MAP_OP_OR; return BOOL_OP;
 ~                       return NOT;

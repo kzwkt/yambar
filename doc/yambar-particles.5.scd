@@ -265,6 +265,26 @@ To match for empty strings, use ' "" ':
 <tag> == ""
 ```
 
+String glob matching
+
+To perform string matching using globbing with "\*" & "?" characters:
+\* Match any zero or more characters.
+? Match exactly any one character.
+
+```
+<tag> ~~ "hello*"
+```
+
+Will match any string starting with "hello", including "hello", 
+"hello1", "hello123", etc.
+
+```
+<tag> ~~ "hello?"
+```
+
+Will match any string starting with "hello" followed by any single 
+character, including "hello1", "hello-", but not "hello".
+
 Furthermore, you may use the boolean operators:
 
 [-  &&

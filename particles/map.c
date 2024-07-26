@@ -13,6 +13,59 @@
 
 #include "map.h"
 
+// String globbing match.
+// Note: Uses "non-greedy" implementation for "*" wildcard matching
+static bool
+string_like(const char* name, const char* pattern)
+{
+    LOG_DBG("pattern:%s name:%s", pattern, name);
+    int px = 0, nx = 0;
+    int nextpx = 0, nextnx = 0;
+    while(px < strlen(pattern) || nx < strlen(name))
+    {
+        if(px < strlen(pattern))
+        {
+            char c = pattern[px];
+            switch (c) {
+            case '?': {
+                // single character
+                px++;
+                nx++;
+                continue;
+            }
+            case '*': {
+                // zero or more glob
+                nextpx=px;
+                nextnx=nx+1;
+                px++;
+                continue;
+            }
+            default: {
+                // normal character
+                if (nx < strlen(name) && name[nx] == c)
+                {
+                    px++;
+                    nx++;
+                    continue;
+                }
+            }
+            }
+
+        }
+        // mismatch
+		if (0 < nextnx && nextnx <= strlen(name)) {
+			px = nextpx;
+			nx = nextnx;
+			continue;
+		}
+        return false;
+
+    }
+    LOG_DBG("map: name %s matched all the pattern %s", name, pattern);
+    // Matched all of pattern to all of name. Success.
+	return true;
+}
+
 static bool
 int_condition(const long tag_value, const long cond_value, enum map_op op)
 {
@@ -75,6 +128,8 @@ str_condition(const char *tag_value, const char *cond_value, enum map_op op)
         return strcmp(tag_value, cond_value) >= 0;
     case MAP_OP_GT:
         return strcmp(tag_value, cond_value) > 0;
+    case MAP_OP_LIKE:
+        return string_like(tag_value, cond_value) != 0;
     case MAP_OP_SELF:
         LOG_WARN("using String tag as bool");
     default:
@@ -166,6 +221,7 @@ free_map_condition(struct map_condition *c)
     case MAP_OP_LE:
     case MAP_OP_LT:
     case MAP_OP_GE:
+    case MAP_OP_LIKE:
     case MAP_OP_GT:
         free(c->value);
         /* FALLTHROUGH */
