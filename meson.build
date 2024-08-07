@@ -12,7 +12,9 @@ plugs_as_libs = get_option('core-plugins-as-shared-libraries')
 
 cc = meson.get_compiler('c')
 
-if cc.has_function('memfd_create')
+if cc.has_function('memfd_create',
+                   args: ['-D_GNU_SOURCE=200809L'],
+                   prefix: '#include <sys/mman.h>')
   add_project_arguments('-DMEMFD_CREATE', language: 'c')
 endif
 
