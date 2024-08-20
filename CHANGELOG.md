@@ -36,6 +36,8 @@
 
 * network: fix missing break in switch statement ([#377][377]).
 * i3/sway: crash when output is turned off an on ([#300][300]).
+* mpd: yambar never attempting to reconnect after MPD closed the
+  connection (for example, when MPD is restarted).
 
 [377]: https://codeberg.org/dnkl/yambar/issues/377
 [300]: https://codeberg.org/dnkl/yambar/issues/300

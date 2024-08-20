@@ -437,7 +437,7 @@ run(struct module *mod)
              */
             while (!aborted) {
                 struct pollfd fds[] = {{.fd = mod->abort_fd, .events = POLLIN}};
-                int res = poll(fds, sizeof(fds) / sizeof(fds[0]), 10 * 1000);
+                int res = poll(fds, sizeof(fds) / sizeof(fds[0]), 2 * 1000);
 
                 if (res < 0) {
                     if (errno == EINTR)
@@ -448,10 +448,16 @@ run(struct module *mod)
                     break;
                 }
 
-                if (res == 1) {
+                if (res == 0) {
+                    ret = 0;
+                    break;
+                }
+
+                else if (res == 1) {
                     assert(fds[0].revents & POLLIN);
                     aborted = true;
                 }
+
             }
         }
 
