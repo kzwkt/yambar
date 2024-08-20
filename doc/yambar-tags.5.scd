@@ -86,11 +86,16 @@ be used.
 :  format
 :  Range tags
 :  Renders a range tag's value as a percentage value
+|  b
+:  format
+:  All tag types
+:  Renders a tag's value (in decimal) divided by 8. Note: no unit
+   suffix is appended
 |  kb, mb, gb
 :  format
 :  All tag types
 :  Renders a tag's value (in decimal) divided by 1000, 1000^2 or
-   1000^3. Note: no unit suffix is appended)
+   1000^3. Note: no unit suffix is appended
 |  kib, mib, gib
 :  format
 :  All tag types

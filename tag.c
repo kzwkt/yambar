@@ -510,6 +510,7 @@ tags_expand_template(const char *template, const struct tag_set *tags)
             FMT_HEX,
             FMT_OCT,
             FMT_PERCENT,
+            FMT_BYTE,
             FMT_KBYTE,
             FMT_MBYTE,
             FMT_GBYTE,
@@ -541,6 +542,8 @@ tags_expand_template(const char *template, const struct tag_set *tags)
                 format = FMT_OCT;
             else if (strcmp(tag_args[i], "%") == 0)
                 format = FMT_PERCENT;
+            else if (strcmp(tag_args[i], "b") == 0)
+                format = FMT_BYTE;
             else if (strcmp(tag_args[i], "kb") == 0)
                 format = FMT_KBYTE;
             else if (strcmp(tag_args[i], "mb") == 0)
@@ -634,19 +637,29 @@ tags_expand_template(const char *template, const struct tag_set *tags)
                 break;
             }
 
+            case FMT_BYTE:
             case FMT_KBYTE:
             case FMT_MBYTE:
             case FMT_GBYTE:
             case FMT_KIBYTE:
             case FMT_MIBYTE:
             case FMT_GIBYTE: {
-                const long divider = format == FMT_KBYTE    ? 1000
-                                     : format == FMT_MBYTE  ? 1000 * 1000
-                                     : format == FMT_GBYTE  ? 1000 * 1000 * 1000
-                                     : format == FMT_KIBYTE ? 1024
-                                     : format == FMT_MIBYTE ? 1024 * 1024
-                                     : format == FMT_GIBYTE ? 1024 * 1024 * 1024
-                                                            : 1;
+                const long divider =
+                    format == FMT_BYTE
+                        ? 8
+                        : format == FMT_KBYTE
+                            ? 1000
+                            : format == FMT_MBYTE
+                                ? 1000 * 1000
+                                : format == FMT_GBYTE
+                                    ? 1000 * 1000 * 1000
+                                    : format == FMT_KIBYTE
+                                        ? 1024
+                                        : format == FMT_MIBYTE
+                                            ? 1024 * 1024
+                                            : format == FMT_GIBYTE
+                                                ? 1024 * 1024 * 1024
+                                                : 1;
 
                 char str[24];
                 if (tag->type(tag) == TAG_TYPE_FLOAT) {
@@ -684,19 +697,29 @@ tags_expand_template(const char *template, const struct tag_set *tags)
                 fmt = zero_pad ? "%0*lu" : "%*lu";
                 break;
 
+            case FMT_BYTE:
             case FMT_KBYTE:
             case FMT_MBYTE:
             case FMT_GBYTE:
             case FMT_KIBYTE:
             case FMT_MIBYTE:
             case FMT_GIBYTE: {
-                const long divider = format == FMT_KBYTE    ? 1024
-                                     : format == FMT_MBYTE  ? 1024 * 1024
-                                     : format == FMT_GBYTE  ? 1024 * 1024 * 1024
-                                     : format == FMT_KIBYTE ? 1000
-                                     : format == FMT_MIBYTE ? 1000 * 1000
-                                     : format == FMT_GIBYTE ? 1000 * 1000 * 1000
-                                                            : 1;
+                const long divider =
+                    format == FMT_BYTE
+                        ? 8
+                        : format == FMT_KBYTE
+                            ? 1024
+                            : format == FMT_MBYTE
+                                ? 1024 * 1024
+                                : format == FMT_GBYTE
+                                    ? 1024 * 1024 * 1024
+                                    : format == FMT_KIBYTE
+                                        ? 1000
+                                        : format == FMT_MIBYTE
+                                            ? 1000 * 1000
+                                            : format == FMT_GIBYTE
+                                                ? 1000 * 1000 * 1000
+                                                : 1;
                 value /= divider;
                 fmt = zero_pad ? "%0*lu" : "%*lu";
                 break;
