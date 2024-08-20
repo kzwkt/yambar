@@ -2,7 +2,7 @@
 
 # Yambar
 
-[![Packaging status](https://repology.org/badge/vertical-allrepos/yambar.svg)](https://repology.org/project/yambar/versions)
+[![Packaging status](https://repology.org/badge/vertical-allrepos/yambar.svg?columns=4)](https://repology.org/project/yambar/versions)
 
 
 ## Index
