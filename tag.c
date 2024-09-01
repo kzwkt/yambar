@@ -510,13 +510,7 @@ tags_expand_template(const char *template, const struct tag_set *tags)
             FMT_HEX,
             FMT_OCT,
             FMT_PERCENT,
-            FMT_BYTE,
-            FMT_KBYTE,
-            FMT_MBYTE,
-            FMT_GBYTE,
-            FMT_KIBYTE,
-            FMT_MIBYTE,
-            FMT_GIBYTE,
+            FMT_DIVIDE,
         } format
             = FMT_DEFAULT;
 
@@ -530,6 +524,7 @@ tags_expand_template(const char *template, const struct tag_set *tags)
 
         int digits = 0;
         int decimals = 2;
+        long divider = 1;
         bool zero_pad = false;
         char *point = NULL;
 
@@ -542,20 +537,34 @@ tags_expand_template(const char *template, const struct tag_set *tags)
                 format = FMT_OCT;
             else if (strcmp(tag_args[i], "%") == 0)
                 format = FMT_PERCENT;
-            else if (strcmp(tag_args[i], "b") == 0)
-                format = FMT_BYTE;
-            else if (strcmp(tag_args[i], "kb") == 0)
-                format = FMT_KBYTE;
-            else if (strcmp(tag_args[i], "mb") == 0)
-                format = FMT_MBYTE;
-            else if (strcmp(tag_args[i], "gb") == 0)
-                format = FMT_GBYTE;
-            else if (strcmp(tag_args[i], "kib") == 0)
-                format = FMT_KIBYTE;
-            else if (strcmp(tag_args[i], "mib") == 0)
-                format = FMT_MIBYTE;
-            else if (strcmp(tag_args[i], "gib") == 0)
-                format = FMT_GIBYTE;
+            else if (strcmp(tag_args[i], "b") == 0) {
+                format = FMT_DIVIDE;
+                divider = 8;
+            }
+            else if (strcmp(tag_args[i], "kb") == 0) {
+                format = FMT_DIVIDE;
+                divider = 1000;
+            }
+            else if (strcmp(tag_args[i], "mb") == 0) {
+                format = FMT_DIVIDE;
+                divider = 1000 * 1000;
+            }
+            else if (strcmp(tag_args[i], "gb") == 0) {
+                format = FMT_DIVIDE;
+                divider = 1000 * 1000 * 1000;
+            }
+            else if (strcmp(tag_args[i], "kib") == 0) {
+                format = FMT_DIVIDE;
+                divider = 1024;
+            }
+            else if (strcmp(tag_args[i], "mib") == 0) {
+                format = FMT_DIVIDE;
+                divider = 1024 * 1024;
+            }
+            else if (strcmp(tag_args[i], "gib") == 0) {
+                format = FMT_DIVIDE;
+                divider = 1024 * 1024 * 1024;
+            }
             else if (strcmp(tag_args[i], "min") == 0)
                 kind = VALUE_MIN;
             else if (strcmp(tag_args[i], "max") == 0)
@@ -637,30 +646,7 @@ tags_expand_template(const char *template, const struct tag_set *tags)
                 break;
             }
 
-            case FMT_BYTE:
-            case FMT_KBYTE:
-            case FMT_MBYTE:
-            case FMT_GBYTE:
-            case FMT_KIBYTE:
-            case FMT_MIBYTE:
-            case FMT_GIBYTE: {
-                const long divider =
-                    format == FMT_BYTE
-                        ? 8
-                        : format == FMT_KBYTE
-                            ? 1000
-                            : format == FMT_MBYTE
-                                ? 1000 * 1000
-                                : format == FMT_GBYTE
-                                    ? 1000 * 1000 * 1000
-                                    : format == FMT_KIBYTE
-                                        ? 1024
-                                        : format == FMT_MIBYTE
-                                            ? 1024 * 1024
-                                            : format == FMT_GIBYTE
-                                                ? 1024 * 1024 * 1024
-                                                : 1;
-
+            case FMT_DIVIDE: {
                 char str[24];
                 if (tag->type(tag) == TAG_TYPE_FLOAT) {
                     const char *fmt = zero_pad ? "%0*.*f" : "%*.*f";
@@ -697,29 +683,7 @@ tags_expand_template(const char *template, const struct tag_set *tags)
                 fmt = zero_pad ? "%0*lu" : "%*lu";
                 break;
 
-            case FMT_BYTE:
-            case FMT_KBYTE:
-            case FMT_MBYTE:
-            case FMT_GBYTE:
-            case FMT_KIBYTE:
-            case FMT_MIBYTE:
-            case FMT_GIBYTE: {
-                const long divider =
-                    format == FMT_BYTE
-                        ? 8
-                        : format == FMT_KBYTE
-                            ? 1024
-                            : format == FMT_MBYTE
-                                ? 1024 * 1024
-                                : format == FMT_GBYTE
-                                    ? 1024 * 1024 * 1024
-                                    : format == FMT_KIBYTE
-                                        ? 1000
-                                        : format == FMT_MIBYTE
-                                            ? 1000 * 1000
-                                            : format == FMT_GIBYTE
-                                                ? 1000 * 1000 * 1000
-                                                : 1;
+            case FMT_DIVIDE: {
                 value /= divider;
                 fmt = zero_pad ? "%0*lu" : "%*lu";
                 break;
