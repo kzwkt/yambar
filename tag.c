@@ -430,12 +430,12 @@ sbuf_append(struct sbuf *s1, const char *s2)
 
 // stores the number in "*value" on success
 static bool
-is_number(const char *str, int *value)
+is_number(const char *str, long *value)
 {
     errno = 0;
 
     char *end;
-    int v = strtol(str, &end, 10);
+    long v = strtol(str, &end, 10);
     if (errno != 0 || *end != '\0')
         return false;
 
@@ -522,8 +522,8 @@ tags_expand_template(const char *template, const struct tag_set *tags)
         } kind
             = VALUE_VALUE;
 
-        int digits = 0;
-        int decimals = 2;
+        long digits = 0;
+        long decimals = 2;
         long divider = 1;
         bool zero_pad = false;
         char *point = NULL;
@@ -537,6 +537,14 @@ tags_expand_template(const char *template, const struct tag_set *tags)
                 format = FMT_OCT;
             else if (strcmp(tag_args[i], "%") == 0)
                 format = FMT_PERCENT;
+            else if (*tag_args[i] == '/') {
+                format = FMT_DIVIDE;
+                const char *divider_str = tag_args[i] + 1;
+                if (!is_number(divider_str, &divider) || divider == 0) {
+                    divider = 1;
+                    LOG_WARN("tag `%s`: invalid divider %s, reset to 1", tag_name, divider_str);
+                }
+            }
             else if (strcmp(tag_args[i], "b") == 0) {
                 format = FMT_DIVIDE;
                 divider = 8;

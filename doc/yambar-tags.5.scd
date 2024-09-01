@@ -86,6 +86,10 @@ be used.
 :  format
 :  Range tags
 :  Renders a range tag's value as a percentage value
+|  /N
+:  format
+:  All tag types
+:  Renders a tag's value (in decimal) divided by N
 |  b
 :  format
 :  All tag types
