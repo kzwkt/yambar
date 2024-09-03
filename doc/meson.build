@@ -44,6 +44,12 @@ endif
 if plugin_network_enabled
   plugin_pages += ['yambar-modules-network.5.scd']
 endif
+if plugin_niri_language_enabled
+  plugin_pages += ['yambar-modules-niri-language.5.scd']
+endif
+if plugin_niri_workspaces_enabled
+  plugin_pages += ['yambar-modules-niri-workspaces.5.scd']
+endif
 if plugin_pipewire_enabled
   plugin_pages += ['yambar-modules-pipewire.5.scd']
 endif

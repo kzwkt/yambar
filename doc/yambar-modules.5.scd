@@ -174,6 +174,10 @@ Available modules have their own pages:
 
 *yambar-modules-sway*(5)
 
+*yambar-modules-niri-language*(5)
+
+*yambar-modules-niri-workspaces*(5)
+
 *yambar-modules-xkb*(5)
 
 *yambar-modules-xwindow*(5)

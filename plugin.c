@@ -84,6 +84,12 @@ EXTERN_MODULE(script);
 #if defined(HAVE_PLUGIN_sway_xkb)
 EXTERN_MODULE(sway_xkb);
 #endif
+#if defined(HAVE_PLUGIN_niri_language)
+EXTERN_MODULE(niri_language);
+#endif
+#if defined(HAVE_PLUGIN_niri_workspaces)
+EXTERN_MODULE(niri_workspaces);
+#endif
 #if defined(HAVE_PLUGIN_xkb)
 EXTERN_MODULE(xkb);
 #endif
@@ -213,6 +219,12 @@ static void __attribute__((constructor)) init(void)
 #endif
 #if defined(HAVE_PLUGIN_sway_xkb)
     REGISTER_CORE_MODULE(sway-xkb, sway_xkb);
+#endif
+#if defined(HAVE_PLUGIN_niri_language)
+    REGISTER_CORE_MODULE(niri-language, niri_language);
+#endif
+#if defined(HAVE_PLUGIN_niri_workspaces)
+    REGISTER_CORE_MODULE(niri-workspaces, niri_workspaces);
 #endif
 #if defined(HAVE_PLUGIN_xkb)
     REGISTER_CORE_MODULE(xkb, xkb);

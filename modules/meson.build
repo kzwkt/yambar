@@ -45,6 +45,12 @@ plugin_script_enabled = get_option('plugin-script').allowed()
 json_sway_xkb = dependency('json-c', required: get_option('plugin-sway-xkb'))
 plugin_sway_xkb_enabled = json_sway_xkb.found()
 
+json_niri_language = dependency('json-c', required: get_option('plugin-niri-language'))
+plugin_niri_language_enabled = json_niri_language.found()
+
+json_niri_workspaces = dependency('json-c', required: get_option('plugin-niri-workspaces'))
+plugin_niri_workspaces_enabled = json_niri_workspaces.found()
+
 xcb_xkb = dependency('xcb-xkb', required: get_option('plugin-xkb'))
 plugin_xkb_enabled = backend_x11 and xcb_xkb.found()
 
@@ -119,6 +125,14 @@ endif
 
 if plugin_sway_xkb_enabled
   mod_data += {'sway-xkb': [['i3-common.c', 'i3-common.h'], [dynlist, json_sway_xkb]]}
+endif
+
+if plugin_niri_language_enabled
+  mod_data += {'niri-language': [['niri-common.c', 'niri-common.h'], [dynlist, json_niri_language]]}
+endif
+
+if plugin_niri_workspaces_enabled
+  mod_data += {'niri-workspaces': [['niri-common.c', 'niri-common.h'], [dynlist, json_niri_workspaces]]}
 endif
 
 if plugin_xkb_enabled
