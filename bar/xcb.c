@@ -101,7 +101,7 @@ setup(struct bar *_bar)
         backend->x = mon->x;
         backend->y = mon->y;
         bar->width = mon->width;
-        backend->y += bar->location == BAR_TOP ? 0 : screen->height_in_pixels - bar->height_with_border;
+        backend->y += bar->location == BAR_TOP ? 0 : mon->height - bar->height_with_border;
 
         found_monitor = true;
 
