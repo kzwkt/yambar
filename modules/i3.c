@@ -876,6 +876,7 @@ content(struct module *mod)
         struct tag_set tags = {
             .tags = (struct tag *[]){
                 tag_new_string(mod, "name", name),
+                tag_new_string(mod, "output", ws->output),
                 tag_new_bool(mod, "visible", ws->visible),
                 tag_new_bool(mod, "focused", ws->focused),
                 tag_new_bool(mod, "urgent", ws->urgent),
@@ -887,7 +888,7 @@ content(struct module *mod)
 
                 tag_new_string(mod, "mode", m->mode),
             },
-            .count = 9,
+            .count = 10,
         };
 
         if (ws->focused) {
