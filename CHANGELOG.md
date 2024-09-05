@@ -20,8 +20,6 @@
   environment variable.
 * network: `type` tag ([#380][380]).
 * network: `type`  and `kind` tags ([#380][380]).
-* tags: `b` tag formatter; divides the tag's decimal value with `8`
-  ([#392][392]).
 * tags: `/<N>` tag formatter: divides the tag's decimal value with `N`
   ([#392][392]).
 

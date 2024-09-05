@@ -545,10 +545,6 @@ tags_expand_template(const char *template, const struct tag_set *tags)
                     LOG_WARN("tag `%s`: invalid divider %s, reset to 1", tag_name, divider_str);
                 }
             }
-            else if (strcmp(tag_args[i], "b") == 0) {
-                format = FMT_DIVIDE;
-                divider = 8;
-            }
             else if (strcmp(tag_args[i], "kb") == 0) {
                 format = FMT_DIVIDE;
                 divider = 1000;

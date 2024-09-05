@@ -90,11 +90,6 @@ be used.
 :  format
 :  All tag types
 :  Renders a tag's value (in decimal) divided by N
-|  b
-:  format
-:  All tag types
-:  Renders a tag's value (in decimal) divided by 8. Note: no unit
-   suffix is appended
 |  kb, mb, gb
 :  format
 :  All tag types
