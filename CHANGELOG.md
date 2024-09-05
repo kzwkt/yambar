@@ -22,6 +22,8 @@
 * network: `type`  and `kind` tags ([#380][380]).
 * tags: `b` tag formatter; divides the tag's decimal value with `8`
   ([#392][392]).
+* tags: `/<N>` tag formatter: divides the tag's decimal value with `N`
+  ([#392][392]).
 
 [96]: https://codeberg.org/dnkl/yambar/issues/96
 [380]: https://codeberg.org/dnkl/yambar/issues/380
