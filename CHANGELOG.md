@@ -22,6 +22,8 @@
 * network: `type`  and `kind` tags ([#380][380]).
 * tags: `/<N>` tag formatter: divides the tag's decimal value with `N`
   ([#392][392]).
+* i3/sway: `output` tag, reflecting the output (monitor) a workspace
+  is on.
 
 [96]: https://codeberg.org/dnkl/yambar/issues/96
 [380]: https://codeberg.org/dnkl/yambar/issues/380
