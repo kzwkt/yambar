@@ -26,6 +26,9 @@ with the _application_ and _title_ tags to replace the X11-only
 |  name
 :  string
 :  The workspace name
+|  output
+:  string
+:  The output (monitor) the workspace is on
 |  visible
 :  bool
 :  True if the workspace is currently visible (on any output)
