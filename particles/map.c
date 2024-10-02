@@ -21,10 +21,9 @@ string_like(const char* name, const char* pattern)
     LOG_DBG("pattern:%s name:%s", pattern, name);
     int px = 0, nx = 0;
     int nextpx = 0, nextnx = 0;
-    while(px < strlen(pattern) || nx < strlen(name))
-    {
-        if(px < strlen(pattern))
-        {
+
+    while (px < strlen(pattern) || nx < strlen(name)) {
+        if (px < strlen(pattern)) {
             char c = pattern[px];
             switch (c) {
             case '?': {
@@ -52,18 +51,21 @@ string_like(const char* name, const char* pattern)
             }
 
         }
+
         // mismatch
-		if (0 < nextnx && nextnx <= strlen(name)) {
-			px = nextpx;
-			nx = nextnx;
-			continue;
-		}
+        if (0 < nextnx && nextnx <= strlen(name)) {
+            px = nextpx;
+            nx = nextnx;
+            continue;
+        }
+
         return false;
 
     }
+
     LOG_DBG("map: name %s matched all the pattern %s", name, pattern);
     // Matched all of pattern to all of name. Success.
-	return true;
+    return true;
 }
 
 static bool
