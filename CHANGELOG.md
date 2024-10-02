@@ -24,8 +24,8 @@
   ([#392][392]).
 * i3/sway: `output` tag, reflecting the output (monitor) a workspace
   is on.
-* Added "string like" `~~` operator to Map particle. Allows
-  glob-style matching on strings using `*` and `?` characters. ([#400][400])
+* Added "string like" `~~` operator to Map particle. Allows glob-style
+  matching on strings using `*` and `?` characters ([#400][400]).
 
 [96]: https://codeberg.org/dnkl/yambar/issues/96
 [380]: https://codeberg.org/dnkl/yambar/issues/380
