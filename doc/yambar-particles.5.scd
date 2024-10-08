@@ -476,7 +476,7 @@ itself when needed.
 
 ```
 content:
-  progres-bar:
+  progress-bar:
     tag: tag_name
     length: 20
     start: {string: {text: ├}}
