@@ -162,7 +162,7 @@ static void
 find_mount_points(const char *dev_path, mount_point_list_t *mount_points)
 {
     int fd = open("/proc/self/mountinfo", O_RDONLY | O_CLOEXEC);
-    FILE *f = fd >= 0 ? fdopen(fd, "r") : NULL;
+    FILE *f = fd >= 0 ? fdopen(fd, "re") : NULL;
 
     if (fd < 0 || f == NULL) {
         LOG_ERRNO("failed to open /proc/self/mountinfo");

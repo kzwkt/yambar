@@ -124,7 +124,7 @@ refresh_cpu_stats(struct cpu_stats *cpu_stats, size_t core_count)
     size_t len = 0;
     ssize_t read;
 
-    fp = fopen("/proc/stat", "r");
+    fp = fopen("/proc/stat", "re");
     if (NULL == fp) {
         LOG_ERRNO("unable to open /proc/stat");
         return;

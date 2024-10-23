@@ -130,7 +130,7 @@ update_application(struct module *mod)
     char path[1024];
     snprintf(path, sizeof(path), "/proc/%d/cmdline", pid);
 
-    int fd = open(path, O_RDONLY);
+    int fd = open(path, O_RDONLY | O_CLOEXEC);
     if (fd == -1)
         return;
 

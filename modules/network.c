@@ -1576,7 +1576,7 @@ out:
 static struct module *
 network_new(struct particle *label, int poll_interval, int left_spacing, int right_spacing)
 {
-    int urandom_fd = open("/dev/urandom", O_RDONLY);
+    int urandom_fd = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
     if (urandom_fd < 0) {
         LOG_ERRNO("failed to open /dev/urandom");
         return NULL;

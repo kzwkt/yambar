@@ -105,7 +105,7 @@ refresh_device_stats(struct private *m)
     size_t len = 0;
     ssize_t read;
 
-    fp = fopen("/proc/diskstats", "r");
+    fp = fopen("/proc/diskstats", "re");
     if (NULL == fp) {
         LOG_ERRNO("unable to open /proc/diskstats");
         return;

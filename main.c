@@ -87,7 +87,7 @@ get_config_path(void)
 static struct bar *
 load_bar(const char *config_path, enum bar_backend backend)
 {
-    FILE *conf_file = fopen(config_path, "r");
+    FILE *conf_file = fopen(config_path, "re");
     if (conf_file == NULL) {
         LOG_ERRNO("%s: failed to open", config_path);
         return NULL;

@@ -664,7 +664,7 @@ handle_window_event(int sock, int type, const struct json_object *json, void *_m
         char path[64];
         snprintf(path, sizeof(path), "/proc/%u/comm", ws->window.pid);
 
-        int fd = open(path, O_RDONLY);
+        int fd = open(path, O_RDONLY | O_CLOEXEC);
         if (fd == -1) {
             /* Application may simply have terminated */
             free(ws->window.application);

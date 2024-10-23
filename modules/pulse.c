@@ -438,7 +438,7 @@ run(struct module *mod)
     }
 
     // Create refresh timer.
-    priv->refresh_timer_fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
+    priv->refresh_timer_fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
     if (priv->refresh_timer_fd < 0) {
         LOG_ERRNO("failed to create timerfd");
         pa_mainloop_free(priv->mainloop);

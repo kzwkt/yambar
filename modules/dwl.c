@@ -330,7 +330,7 @@ run_init(int *inotify_fd, int *inotify_wd, FILE **file, char *dwl_info_filename)
         return 1;
     }
 
-    *file = fopen(dwl_info_filename, "r");
+    *file = fopen(dwl_info_filename, "re");
     if (*file == NULL) {
         inotify_rm_watch(*inotify_fd, *inotify_wd);
         close(*inotify_fd);

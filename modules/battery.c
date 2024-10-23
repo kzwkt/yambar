@@ -259,13 +259,13 @@ initialize(struct private *m)
 {
     char line_buf[512];
 
-    int pw_fd = open("/sys/class/power_supply", O_RDONLY);
+    int pw_fd = open("/sys/class/power_supply", O_RDONLY | O_CLOEXEC);
     if (pw_fd < 0) {
         LOG_ERRNO("/sys/class/power_supply");
         return false;
     }
 
-    int base_dir_fd = openat(pw_fd, m->battery, O_RDONLY);
+    int base_dir_fd = openat(pw_fd, m->battery, O_RDONLY | O_CLOEXEC);
     close(pw_fd);
 
     if (base_dir_fd < 0) {
@@ -274,7 +274,7 @@ initialize(struct private *m)
     }
 
     {
-        int fd = openat(base_dir_fd, "manufacturer", O_RDONLY);
+        int fd = openat(base_dir_fd, "manufacturer", O_RDONLY | O_CLOEXEC);
         if (fd == -1) {
             LOG_WARN("/sys/class/power_supply/%s/manufacturer: %s", m->battery, strerror(errno));
             m->manufacturer = NULL;
@@ -285,7 +285,7 @@ initialize(struct private *m)
     }
 
     {
-        int fd = openat(base_dir_fd, "model_name", O_RDONLY);
+        int fd = openat(base_dir_fd, "model_name", O_RDONLY | O_CLOEXEC);
         if (fd == -1) {
             LOG_WARN("/sys/class/power_supply/%s/model_name: %s", m->battery, strerror(errno));
             m->model = NULL;
@@ -298,7 +298,7 @@ initialize(struct private *m)
     if (faccessat(base_dir_fd, "energy_full_design", O_RDONLY, 0) == 0
         && faccessat(base_dir_fd, "energy_full", O_RDONLY, 0) == 0) {
         {
-            int fd = openat(base_dir_fd, "energy_full_design", O_RDONLY);
+            int fd = openat(base_dir_fd, "energy_full_design", O_RDONLY | O_CLOEXEC);
             if (fd == -1) {
                 LOG_ERRNO("/sys/class/power_supply/%s/energy_full_design", m->battery);
                 goto err;
@@ -309,7 +309,7 @@ initialize(struct private *m)
         }
 
         {
-            int fd = openat(base_dir_fd, "energy_full", O_RDONLY);
+            int fd = openat(base_dir_fd, "energy_full", O_RDONLY | O_CLOEXEC);
             if (fd == -1) {
                 LOG_ERRNO("/sys/class/power_supply/%s/energy_full", m->battery);
                 goto err;
@@ -325,7 +325,7 @@ initialize(struct private *m)
     if (faccessat(base_dir_fd, "charge_full_design", O_RDONLY, 0) == 0
         && faccessat(base_dir_fd, "charge_full", O_RDONLY, 0) == 0) {
         {
-            int fd = openat(base_dir_fd, "charge_full_design", O_RDONLY);
+            int fd = openat(base_dir_fd, "charge_full_design", O_RDONLY | O_CLOEXEC);
             if (fd == -1) {
                 LOG_ERRNO("/sys/class/power_supply/%s/charge_full_design", m->battery);
                 goto err;
@@ -336,7 +336,7 @@ initialize(struct private *m)
         }
 
         {
-            int fd = openat(base_dir_fd, "charge_full", O_RDONLY);
+            int fd = openat(base_dir_fd, "charge_full", O_RDONLY | O_CLOEXEC);
             if (fd == -1) {
                 LOG_ERRNO("/sys/class/power_supply/%s/charge_full", m->battery);
                 goto err;
@@ -362,13 +362,13 @@ update_status(struct module *mod)
 {
     struct private *m = mod->private;
 
-    int pw_fd = open("/sys/class/power_supply", O_RDONLY);
+    int pw_fd = open("/sys/class/power_supply", O_RDONLY | O_CLOEXEC);
     if (pw_fd < 0) {
         LOG_ERRNO("/sys/class/power_supply");
         return false;
     }
 
-    int base_dir_fd = openat(pw_fd, m->battery, O_RDONLY);
+    int base_dir_fd = openat(pw_fd, m->battery, O_RDONLY | O_CLOEXEC);
     close(pw_fd);
 
     if (base_dir_fd < 0) {
@@ -376,14 +376,14 @@ update_status(struct module *mod)
         return false;
     }
 
-    int status_fd = openat(base_dir_fd, "status", O_RDONLY);
+    int status_fd = openat(base_dir_fd, "status", O_RDONLY | O_CLOEXEC);
     if (status_fd < 0) {
         LOG_ERRNO("/sys/class/power_supply/%s/status", m->battery);
         close(base_dir_fd);
         return false;
     }
 
-    int capacity_fd = openat(base_dir_fd, "capacity", O_RDONLY);
+    int capacity_fd = openat(base_dir_fd, "capacity", O_RDONLY | O_CLOEXEC);
     if (capacity_fd < 0) {
         LOG_ERRNO("/sys/class/power_supply/%s/capacity", m->battery);
         close(status_fd);
@@ -391,12 +391,12 @@ update_status(struct module *mod)
         return false;
     }
 
-    int energy_fd = openat(base_dir_fd, "energy_now", O_RDONLY);
-    int power_fd = openat(base_dir_fd, "power_now", O_RDONLY);
-    int charge_fd = openat(base_dir_fd, "charge_now", O_RDONLY);
-    int current_fd = openat(base_dir_fd, "current_now", O_RDONLY);
-    int time_to_empty_fd = openat(base_dir_fd, "time_to_empty_now", O_RDONLY);
-    int time_to_full_fd = openat(base_dir_fd, "time_to_full_now", O_RDONLY);
+    int energy_fd = openat(base_dir_fd, "energy_now", O_RDONLY | O_CLOEXEC);
+    int power_fd = openat(base_dir_fd, "power_now", O_RDONLY | O_CLOEXEC);
+    int charge_fd = openat(base_dir_fd, "charge_now", O_RDONLY | O_CLOEXEC);
+    int current_fd = openat(base_dir_fd, "current_now", O_RDONLY | O_CLOEXEC);
+    int time_to_empty_fd = openat(base_dir_fd, "time_to_empty_now", O_RDONLY | O_CLOEXEC);
+    int time_to_full_fd = openat(base_dir_fd, "time_to_full_now", O_RDONLY | O_CLOEXEC);
 
     long capacity = readint_from_fd(capacity_fd);
     long energy = energy_fd >= 0 ? readint_from_fd(energy_fd) : -1;

@@ -54,7 +54,7 @@ get_mem_stats(uint64_t *mem_free, uint64_t *mem_total)
     size_t len = 0;
     ssize_t read = 0;
 
-    fp = fopen("/proc/meminfo", "r");
+    fp = fopen("/proc/meminfo", "re");
     if (NULL == fp) {
         LOG_ERRNO("unable to open /proc/meminfo");
         return false;

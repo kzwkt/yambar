@@ -112,13 +112,13 @@ readint_from_fd(int fd)
 static int
 initialize(struct private *m)
 {
-    int backlight_fd = open("/sys/class/backlight", O_RDONLY);
+    int backlight_fd = open("/sys/class/backlight", O_RDONLY | O_CLOEXEC);
     if (backlight_fd == -1) {
         LOG_ERRNO("/sys/class/backlight");
         return -1;
     }
 
-    int base_dir_fd = openat(backlight_fd, m->device, O_RDONLY);
+    int base_dir_fd = openat(backlight_fd, m->device, O_RDONLY | O_CLOEXEC);
     close(backlight_fd);
 
     if (base_dir_fd == -1) {
@@ -126,7 +126,7 @@ initialize(struct private *m)
         return -1;
     }
 
-    int max_fd = openat(base_dir_fd, "max_brightness", O_RDONLY);
+    int max_fd = openat(base_dir_fd, "max_brightness", O_RDONLY | O_CLOEXEC);
     if (max_fd == -1) {
         LOG_ERRNO("/sys/class/backlight/%s/max_brightness", m->device);
         close(base_dir_fd);
@@ -136,7 +136,7 @@ initialize(struct private *m)
     m->max_brightness = readint_from_fd(max_fd);
     close(max_fd);
 
-    int current_fd = openat(base_dir_fd, "brightness", O_RDONLY);
+    int current_fd = openat(base_dir_fd, "brightness", O_RDONLY | O_CLOEXEC);
     close(base_dir_fd);
 
     if (current_fd == -1) {
