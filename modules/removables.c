@@ -161,13 +161,10 @@ content(struct module *mod)
 static void
 find_mount_points(const char *dev_path, mount_point_list_t *mount_points)
 {
-    int fd = open("/proc/self/mountinfo", O_RDONLY | O_CLOEXEC);
-    FILE *f = fd >= 0 ? fdopen(fd, "re") : NULL;
+    FILE *f = fopen("/proc/self/mountinfo", "re");
 
-    if (fd < 0 || f == NULL) {
+    if (f == NULL) {
         LOG_ERRNO("failed to open /proc/self/mountinfo");
-        if (fd >= 0)
-            close(fd);
         return;
     }
 
