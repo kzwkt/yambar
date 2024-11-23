@@ -50,9 +50,11 @@
 * mpd: yambar never attempting to reconnect after MPD closed the
   connection (for example, when MPD is restarted).
 * Bar positioning on multi-monitor setups, when `location=bottom`.
+* pipewire: Improve handling of node switching ([#424][424]).
 
 [377]: https://codeberg.org/dnkl/yambar/issues/377
 [300]: https://codeberg.org/dnkl/yambar/issues/300
+[424]: https://codeberg.org/dnkl/yambar/pulls/424
 
 
 ### Security

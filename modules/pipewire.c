@@ -45,6 +45,16 @@ struct output_informations {
 };
 static struct output_informations const output_informations_null;
 
+static void
+output_informations_destroy(struct output_informations *output_informations)
+{
+    free(output_informations->name);
+    free(output_informations->description);
+    free(output_informations->icon);
+    free(output_informations->form_factor);
+    free(output_informations->bus);
+}
+
 struct data;
 struct private
 {
@@ -213,18 +223,23 @@ node_find_route(struct data *data, bool is_sink)
 static void
 node_unhook_binded_node(struct data *data, bool is_sink)
 {
+    struct private *private = data->module->private;
+
     struct node **target_node = NULL;
     struct spa_hook *target_listener = NULL;
     void **target_proxy = NULL;
+    struct output_informations *output_informations = NULL;
 
     if (is_sink) {
         target_node = &data->binded_sink;
         target_listener = &data->node_sink_listener;
         target_proxy = &data->node_sink;
+        output_informations = &private->sink_informations;
     } else {
         target_node = &data->binded_source;
         target_listener = &data->node_source_listener;
         target_proxy = &data->node_source;
+        output_informations = &private->source_informations;
     }
 
     if (*target_node == NULL)
@@ -235,6 +250,9 @@ node_unhook_binded_node(struct data *data, bool is_sink)
 
     *target_node = NULL;
     *target_proxy = NULL;
+
+    output_informations_destroy(output_informations);
+    *output_informations = output_informations_null;
 }
 
 static void
@@ -398,18 +416,18 @@ node_events_info(void *userdata, struct pw_node_info const *info)
         struct spa_dict_item const *item = NULL;
 
         item = spa_dict_lookup_item(info->props, "node.name");
-        if (item != NULL)
-            X_FREE_SET(output_informations->name, X_STRDUP(item->value));
+        X_FREE_SET(output_informations->name, item != NULL ? X_STRDUP(item->value) : NULL);
 
         item = spa_dict_lookup_item(info->props, "node.description");
-        if (item != NULL)
-            X_FREE_SET(output_informations->description, X_STRDUP(item->value));
+        X_FREE_SET(output_informations->description, item != NULL ? X_STRDUP(item->value) : NULL);
 
         item = spa_dict_lookup_item(info->props, "device.id");
         if (item != NULL) {
             uint32_t value = 0;
             spa_atou32(item->value, &value, 10);
             output_informations->device_id = value;
+        } else {
+            output_informations->device_id = 0;
         }
 
         item = spa_dict_lookup_item(info->props, "card.profile.device");
@@ -417,30 +435,29 @@ node_events_info(void *userdata, struct pw_node_info const *info)
             uint32_t value = 0;
             spa_atou32(item->value, &value, 10);
             output_informations->card_profile_device_id = value;
+        } else {
+            output_informations->card_profile_device_id = 0;
         }
 
         /* Device's information has an more important priority than node's information */
         /* icon_name */
         struct route *route = node_find_route(data, node_data->is_sink);
         if (route != NULL && route->icon_name != NULL)
-            output_informations->icon = X_STRDUP(route->icon_name);
+            X_FREE_SET(output_informations->icon, X_STRDUP(route->icon_name));
         else {
             item = spa_dict_lookup_item(info->props, "device.icon-name");
-            if (item != NULL)
-                X_FREE_SET(output_informations->icon, X_STRDUP(item->value));
+            X_FREE_SET(output_informations->icon, item != NULL ? X_STRDUP(item->value) : NULL);
         }
         /* form_factor */
         if (route != NULL && route->form_factor != NULL)
-            output_informations->form_factor = X_STRDUP(route->form_factor);
+            X_FREE_SET(output_informations->form_factor, X_STRDUP(route->form_factor));
         else {
             item = spa_dict_lookup_item(info->props, "device.form-factor");
-            if (item != NULL)
-                X_FREE_SET(output_informations->form_factor, X_STRDUP(item->value));
+            X_FREE_SET(output_informations->form_factor, item != NULL ? X_STRDUP(item->value) : NULL);
         }
 
         item = spa_dict_lookup_item(info->props, "device.bus");
-        if (item != NULL)
-            X_FREE_SET(output_informations->bus, X_STRDUP(item->value));
+        X_FREE_SET(output_informations->bus, item != NULL ? X_STRDUP(item->value) : NULL);
 
         data->module->bar->refresh(data->module->bar);
     }
@@ -827,18 +844,8 @@ destroy(struct module *module)
     pipewire_deinit(private->data);
     private->label->destroy(private->label);
 
-    /* sink */
-    free(private->sink_informations.name);
-    free(private->sink_informations.description);
-    free(private->sink_informations.icon);
-    free(private->sink_informations.form_factor);
-    free(private->sink_informations.bus);
-    /* source */
-    free(private->source_informations.name);
-    free(private->source_informations.description);
-    free(private->source_informations.icon);
-    free(private->source_informations.form_factor);
-    free(private->source_informations.bus);
+    output_informations_destroy(&private->sink_informations);
+    output_informations_destroy(&private->source_informations);
 
     free(private);
     module_default_destroy(module);
