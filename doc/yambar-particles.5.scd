@@ -155,7 +155,7 @@ content:
 
 This particle is a list (or sequence, if you like) of other
 particles. It can be used to render e.g. _string_ particles with
-different font and/or color formatting. Or ay other particle
+different font and/or color formatting. Or any other particle
 combinations.
 
 But note that this means you *cannot* set any attributes on the _list_

@@ -16,7 +16,7 @@ configurable amount of time.
 In continuous mode, the script is executed once. It will typically run
 in a loop, sending an updated tag set whenever it needs, or wants
 to. The last tag set is used (displayed) by yambar until a new tag set
-is received. This mode is intended to be used by scripts that depends
+is received. This mode is intended to be used by scripts that depend
 on non-polling methods to update their state.
 
 Tag sets, or _transactions_, are separated by an empty line

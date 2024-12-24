@@ -17,8 +17,8 @@ currently present in the machine.
    for the machine
 |  is_disk
 :  boolean
-:  whether or not the device is a disk (e.g. sda, sdb) or a partition
-   (e.g. sda1, sda2, ...). "Total" is advertised as a disk.
+:  whether or not the device is a disk (e.g., sda, sdb) or a partition
+   (e.g., sda1, sda2, ...). "Total" is advertised as a disk.
 |  read_speed
 :  int
 :  bytes read, in bytes/s

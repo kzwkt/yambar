@@ -369,7 +369,7 @@ refresh(const struct bar *_bar)
 
     /* Send an event to handle refresh from main thread */
 
-    /* Note: docs say that all X11 events are 32 bytes, reglardless of
+    /* Note: docs say that all X11 events are 32 bytes, regardless of
      * the size of the event structure */
     xcb_expose_event_t *evt = calloc(32, 1);
 

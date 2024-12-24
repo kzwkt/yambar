@@ -137,7 +137,7 @@ content:
 
 # STACK
 
-This particles combines multiple decorations.
+This particle combines multiple decorations.
 
 ## CONFIGURATION
 

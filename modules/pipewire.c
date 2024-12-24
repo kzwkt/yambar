@@ -368,7 +368,7 @@ device_events_param(void *userdata, int seq, uint32_t id, uint32_t index, uint32
     if (binded_node == NULL)
         return;
 
-    /* Node's device is the the same as route's device */
+    /* Node's device is the same as route's device */
     if (output_informations->device_id != route->device->id)
         return;
 

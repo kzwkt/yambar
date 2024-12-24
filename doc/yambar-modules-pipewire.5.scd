@@ -19,10 +19,10 @@ pipewire - Monitors pipewire for volume, mute/unmute, device change
 :  Current device description
 |  form_factor
 :  string
-:  Current device form factor (headset, speaker, mic, etc)
+:  Current device form factor (headset, speaker, mic, etc.)
 |  bus
 :  string
-:  Current device bus (bluetooth, alsa, etc)
+:  Current device bus (bluetooth, alsa, etc.)
 |  icon
 :  string
 :  Current device icon name
