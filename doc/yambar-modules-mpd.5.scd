@@ -20,6 +20,9 @@ mpd - This module provides MPD status such as currently playing artist/album/son
 |  consume
 :  bool
 :  True if the *consume* flag is set
+|  single
+:  bool
+:  True if the *single* flag is set
 |  volume
 :  range
 :  Volume of MPD in percentage

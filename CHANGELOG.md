@@ -26,11 +26,13 @@
   is on.
 * Added "string like" `~~` operator to Map particle. Allows glob-style
   matching on strings using `*` and `?` characters ([#400][400]).
+* Added "single" mode flag to the `mpd` module ([#428][428]).
 
 [96]: https://codeberg.org/dnkl/yambar/issues/96
 [380]: https://codeberg.org/dnkl/yambar/issues/380
 [392]: https://codeberg.org/dnkl/yambar/issues/392
 [400]: https://codeberg.org/dnkl/yambar/pulls/400
+[428]: https://codeberg.org/dnkl/yambar/pulls/428
 
 
 ### Changed
