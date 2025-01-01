@@ -34,7 +34,7 @@
 [392]: https://codeberg.org/dnkl/yambar/issues/392
 [400]: https://codeberg.org/dnkl/yambar/pulls/400
 [428]: https://codeberg.org/dnkl/yambar/pulls/428
-[405]: https://codeberg.org/dnkl/yambar/issues/405
+[405]: https://codeberg.org/dnkl/yambar/pulls/405
 
 
 ### Changed
