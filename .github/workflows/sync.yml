@@ -13,16 +13,17 @@ jobs:
       - name: Checkout the Codeberg repository
         run: |
           git clone --mirror https://codeberg.org/dnkl/yambar.git repo
-          
+
+      - name: Convert bare repository to working tree and checkout main
+        run: |
+          cd repo
+          git config --bool core.bare false
+          git checkout main
+
       - name: Fetch changes from GitHub (mirror update)
         run: |
           cd repo
           git fetch origin
-
-      - name: Checkout the main branch
-        run: |
-          cd repo
-          git checkout --force main
 
       - name: Merge Codeberg updates into main branch
         run: |
