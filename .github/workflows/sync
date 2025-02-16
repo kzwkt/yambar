@@ -1,0 +1,17 @@
+name: Sync from Codeberg
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Runs daily at midnight UTC
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone Codeberg repo
+        run: |
+          git clone --mirror https://codeberg.org/dnkl/yambar repo
+          cd repo
+          git remote set-url --push origin https://github.com/kzwkt/yambar
+          git push --mirror
