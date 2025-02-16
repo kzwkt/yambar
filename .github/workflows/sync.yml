@@ -1,9 +1,11 @@
 name: Mirror Yambar Repo
 
 on:
+  push:
+    branches:
+      - workflow-only  # Trigger only on pushes to the 'workflow-only' branch
   schedule:
-    - cron: "0 0 * * *"  # Runs daily at midnight
-  workflow_dispatch:  # Allows manual triggering
+    - cron: '0 0 * * *'  # Run every day at midnight (UTC)
 
 jobs:
   mirror:
