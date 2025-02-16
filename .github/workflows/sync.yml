@@ -21,14 +21,14 @@ jobs:
           cd repo
           git fetch origin
 
-      - name: Merge Codeberg updates into main branch
+      - name: Merge Codeberg updates into master branch
         run: |
           cd repo
-          git checkout main
-          git merge origin/main || echo "No changes to merge"
+          git checkout master  # Change 'main' to 'master'
+          git merge origin/master || echo "No changes to merge"  # Change 'main' to 'master'
 
       - name: Push changes to GitHub
         run: |
           cd repo
           git remote set-url --push origin https://x-access-token:${{ secrets.GH_PAT }}@github.com/kzwkt/yambar.git
-          git push origin main
+          git push origin master  # Change 'main' to 'master'
