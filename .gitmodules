@@ -1,4 +1,0 @@
-[submodule "external/wlr-protocols"]
-	path = external/wlr-protocols
-	url = https://github.com/swaywm/wlr-protocols.git
-	branch = master
