@@ -12,15 +12,9 @@ jobs:
     steps:
       - name: Checkout the Codeberg repository
         run: |
-          git clone --mirror https://codeberg.org/dnkl/yambar.git repo
+          git clone https://codeberg.org/dnkl/yambar.git repo
 
-      - name: Convert bare repository to working tree and checkout main
-        run: |
-          cd repo
-          git config --bool core.bare false
-          git checkout main
-
-      - name: Fetch changes from GitHub (mirror update)
+      - name: Fetch changes from Codeberg
         run: |
           cd repo
           git fetch origin
@@ -28,20 +22,11 @@ jobs:
       - name: Merge Codeberg updates into main branch
         run: |
           cd repo
+          git checkout main
           git merge origin/main || echo "No changes to merge"
 
-      - name: Protect workflow branch
-        run: |
-          cd repo
-          git fetch origin workflow-branch:workflow-branch
-
-      - name: Push changes to main (without affecting workflow branch)
+      - name: Push changes to GitHub
         run: |
           cd repo
           git remote set-url --push origin https://x-access-token:${{ secrets.GH_PAT }}@github.com/kzwkt/yambar.git
           git push origin main
-
-      - name: Push workflow branch if needed (e.g., update workflows)
-        run: |
-          cd repo
-          git push origin workflow-branch
