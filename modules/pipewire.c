@@ -60,6 +60,8 @@ struct private
 {
     struct particle *label;
     struct data *data;
+    int left_spacing;
+    int right_spacing;
 
     /* pipewire related */
     struct output_informations sink_informations;
@@ -918,7 +920,7 @@ content(struct module *module)
 
     mtx_unlock(&module->lock);
 
-    return dynlist_exposable_new(exposables, exposables_length, 0, 0);
+    return dynlist_exposable_new(exposables, exposables_length, private->left_spacing, private->right_spacing);
 }
 
 static int
@@ -965,11 +967,13 @@ run(struct module *module)
 }
 
 static struct module *
-pipewire_new(struct particle *label)
+pipewire_new(struct particle *label, int left_spacing, int right_spacing)
 {
     struct private *private = calloc(1, sizeof(struct private));
     assert(private != NULL);
     private->label = label;
+    private->left_spacing = left_spacing;
+    private->right_spacing = right_spacing;
 
     struct module *module = module_common_new();
     module->private = private;
@@ -987,13 +991,25 @@ static struct module *
 from_conf(struct yml_node const *node, struct conf_inherit inherited)
 {
     struct yml_node const *content = yml_get_value(node, "content");
-    return pipewire_new(conf_to_particle(content, inherited));
+    struct yml_node const *spacing = yml_get_value(node, "spacing");
+    struct yml_node const *left_spacing = yml_get_value(node, "left-spacing");
+    struct yml_node const *right_spacing = yml_get_value(node, "right-spacing");
+
+    int left = spacing != NULL ? yml_value_as_int(spacing) : left_spacing != NULL ? yml_value_as_int(left_spacing) : 0;
+    int right = spacing != NULL         ? yml_value_as_int(spacing)
+                : right_spacing != NULL ? yml_value_as_int(right_spacing)
+                                        : 0;
+
+    return pipewire_new(conf_to_particle(content, inherited), left, right);
 }
 
 static bool
 verify_conf(keychain_t *keychain, struct yml_node const *node)
 {
     static struct attr_info const attrs[] = {
+        {"spacing", false, &conf_verify_unsigned},
+        {"left-spacing", false, &conf_verify_unsigned},
+        {"right-spacing", false, &conf_verify_unsigned},
         MODULE_COMMON_ATTRS,
     };
     return conf_verify_dict(keychain, node, attrs);

@@ -43,6 +43,18 @@ pipewire - Monitors pipewire for volume, mute/unmute, device change
 :[ *Type*
 :[ *Req*
 :< *Description*
+|  left-spacing
+:  int
+:  no
+:  Space, in pixels, in the left side of each rendered volume
+|  right-spacing
+:  int
+:  no
+:  Space, in pixels, on the right side of each rendered volume
+|  spacing
+:  int
+:  no
+:  Short-hand for setting both _left-spacing_ and _right-spacing_
 |  content
 :  particle
 :  yes
