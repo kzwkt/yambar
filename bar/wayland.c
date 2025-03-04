@@ -1223,7 +1223,7 @@ loop(struct bar *_bar, void (*expose)(const struct bar *bar),
             bool do_expose = false;
 
             /* Coalesce “refresh” commands */
-            size_t count = 0;
+            __attribute__((unused)) size_t count = 0;
             while (true) {
                 uint8_t command;
                 ssize_t r = read(backend->pipe_fds[0], &command, sizeof(command));
