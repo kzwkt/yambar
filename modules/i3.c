@@ -594,7 +594,7 @@ handle_window_event(int sock, int type, const struct json_object *json, void *_m
     mtx_lock(&mod->lock);
 
     struct workspace *ws = NULL;
-    size_t focused = 0;
+    __attribute__((unused)) size_t focused = 0;
     tll_foreach(m->workspaces, it)
     {
         if (it->item.focused) {
