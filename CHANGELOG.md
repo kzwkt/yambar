@@ -29,6 +29,8 @@
 * Added "single" mode flag to the `mpd` module ([#428][428]).
 * niri: add a new module for niri-workspaces and niri-language
   ([#404][404]).
+* pipewire: added `spacing`, `left-spacing` and `right-spacing`
+  attributes.
 
 [96]: https://codeberg.org/dnkl/yambar/issues/96
 [380]: https://codeberg.org/dnkl/yambar/issues/380
