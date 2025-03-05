@@ -37,10 +37,6 @@ sources:
 #     to: <comitter>
 
 tasks:
-  - codespell: |
-      pip install codespell
-      cd yambar
-      ~/.local/bin/codespell README.md CHANGELOG.md *.c *.h doc/*.scd
   - fcft: |
       cd yambar/subprojects
       git clone https://codeberg.org/dnkl/fcft.git
