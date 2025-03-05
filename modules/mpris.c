@@ -463,7 +463,8 @@ context_event_handle_name_owner_changed(sd_bus_message *message, struct context 
      * it was acquired, lost or changed */
 
     const char *bus_name = NULL, *old_owner = NULL, *new_owner = NULL;
-    int status = sd_bus_message_read(message, "sss", &bus_name, &old_owner, &new_owner);
+    int status __attribute__((unused))
+        = sd_bus_message_read(message, "sss", &bus_name, &old_owner, &new_owner);
     assert(status > 0);
 
 #if 1
@@ -508,7 +509,8 @@ context_event_handle_name_acquired(sd_bus_message *message, struct context *cont
     /* NameAcquired (STRING name) */
     /* " This signal is sent to a specific application when it gains ownership of a name. " */
     const char *name = NULL;
-    int status = sd_bus_message_read_basic(message, SD_BUS_TYPE_STRING, &name);
+    int status __attribute__((unused))
+        = sd_bus_message_read_basic(message, SD_BUS_TYPE_STRING, &name);
     assert(status > 0);
 
     /*LOG_DBG("event_handler: 'NameAcquired': name: '%s'", name);*/
@@ -727,7 +729,8 @@ update_status_from_message(struct module *mod, sd_bus_message *message)
 
     while ((has_entries = sd_bus_message_enter_container(message, SD_BUS_TYPE_DICT_ENTRY, "sv")) > 0) {
         const char *property_name = NULL;
-        int status = sd_bus_message_read_basic(message, SD_BUS_TYPE_STRING, &property_name);
+        int status __attribute__((unused))
+            = sd_bus_message_read_basic(message, SD_BUS_TYPE_STRING, &property_name);
         assert(status > 0);
 
         if (!property_parse(&client->property, property_name, message)) {
