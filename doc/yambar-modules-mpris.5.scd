@@ -55,6 +55,11 @@ mpris - This module provides MPRIS status such as currently playing artist/album
 :  list of string
 :  yes
 :  A list of MPRIS client identities
+|  query_timeout
+:  int
+:  no
+:  Dbus/MPRIS client connection timeout in ms. Try setting/incrementing
+   this value if the module reports a timeout error. Defaults to 500.
 
 # EXAMPLES
 
@@ -77,18 +82,19 @@ bar:
 # NOTE
 
 The 'identity' refers a part of your clients DBus bus name.
-You can obtain a list of available bus names using:
+You can obtain a list of active client names using:
 
 ```
 Systemd:   > busctl --user --list
 Playerctl: > playerctl --list-all
-Libdbus:   > dbus-send --session --print-reply --type=method_call --dest='org.freedesktop.DBus' /org org.freedesktop.DBus.ListNames ... | grep 'org.mpris.MediaPlayer2'
+Libdbus:   > dbus-send --session --print-reply --type=method_call \
+             --dest='org.freedesktop.DBus' /org org.freedesktop.DBus.ListNames
 ```
 
-The identity refers to the part after 'org.mpris.MediaPlayer2'.
-For example, firefox may use the bus name
-'org.mpris.MediaPlayer2.firefox.instance_1_7' and its identity would be
-'firefox'
+MPRIS client bus names start with 'org.mpris.MediaPlayer2.<identity>'.
+For example, firefox may use the bus name:
+'org.mpris.MediaPlayer2.firefox.instance_1_7' which
+gives us the identity 'firefox'
 
 # SEE ALSO
 

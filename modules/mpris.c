@@ -14,16 +14,17 @@
 #include <sys/eventfd.h>
 
 #include "dbus.h"
+#include "yml.h"
 
 #define LOG_MODULE "mpris"
-#define LOG_ENABLE_DBG 1
+#define LOG_ENABLE_DBG 0
 #include "../bar/bar.h"
 #include "../config-verify.h"
 #include "../config.h"
 #include "../log.h"
 #include "../plugin.h"
 
-#define QUERY_TIMEOUT 100
+#define DEFAULT_QUERY_TIMEOUT 500
 
 #define PATH "/org/mpris/MediaPlayer2"
 #define BUS_NAME "org.mpris.MediaPlayer2"
@@ -99,6 +100,7 @@ struct private
     int refresh_abort_fd;
 
     size_t identities_count;
+    size_t timeout_ms;
     const char **identities;
     struct particle *label;
 
@@ -649,10 +651,10 @@ context_new(struct private *m, struct context *context)
 
     sd_bus_message *reply = NULL;
     sd_bus_error error = {};
-    status = sd_bus_call(NULL, message, QUERY_TIMEOUT, &error, &reply);
+    status = sd_bus_call(NULL, message, m->timeout_ms, &error, &reply);
 
     if (status < 0 && sd_bus_error_is_set(&error)) {
-        LOG_ERR("context_new: got error response with error: %s: %s (%d)", error.name, error.message,
+        LOG_ERR("context_new: got error response: %s: %s (%d)", error.name, error.message,
                 sd_bus_error_get_errno(&error));
         return false;
     }
@@ -1035,7 +1037,7 @@ run(struct module *mod)
             break;
         }
 
-        if (!context_process_events(context, QUERY_TIMEOUT)) {
+        if (!context_process_events(context, m->timeout_ms)) {
             aborted = true;
             break;
         }
@@ -1068,10 +1070,11 @@ description(const struct module *mod)
 }
 
 static struct module *
-mpris_new(const char **ident, size_t ident_count, struct particle *label)
+mpris_new(const char **ident, size_t ident_count, size_t timeout, struct particle *label)
 {
     struct private *priv = calloc(1, sizeof(*priv));
     priv->label = label;
+    priv->timeout_ms = timeout;
     priv->identities = malloc(sizeof(*ident) * ident_count);
     priv->identities_count = ident_count;
 
@@ -1093,7 +1096,12 @@ static struct module *
 from_conf(const struct yml_node *node, struct conf_inherit inherited)
 {
     const struct yml_node *ident_list = yml_get_value(node, "identities");
+    const struct yml_node *query_timeout = yml_get_value(node, "query_timeout");
     const struct yml_node *c = yml_get_value(node, "content");
+
+    size_t timeout_ms = DEFAULT_QUERY_TIMEOUT * 1000;
+    if(query_timeout != NULL)
+        timeout_ms = yml_value_as_int(query_timeout) * 1000;
 
     const size_t ident_count = yml_list_length(ident_list);
     const char *ident[ident_count];
@@ -1102,7 +1110,7 @@ from_conf(const struct yml_node *node, struct conf_inherit inherited)
         ident[i] = yml_value_as_string(iter.node);
     }
 
-    return mpris_new(ident, ident_count, conf_to_particle(c, inherited));
+    return mpris_new(ident, ident_count, timeout_ms, conf_to_particle(c, inherited));
 }
 
 static bool
@@ -1116,6 +1124,7 @@ verify_conf(keychain_t *chain, const struct yml_node *node)
 {
     static const struct attr_info attrs[] = {
         {"identities", true, &conf_verify_indentities},
+        {"query_timeout", false, &conf_verify_unsigned},
         MODULE_COMMON_ATTRS,
     };
 
