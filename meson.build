@@ -77,10 +77,6 @@ backend_wayland = wayland_client.found() and wayland_cursor.found()
 tllist = dependency('tllist', version: '>=1.0.1', fallback: 'tllist')
 fcft = dependency('fcft', version: ['>=3.0.0', '<4.0.0'], fallback: 'fcft')
 
-# DBus dependency. Used by 'modules/mpris'
-sdbus_library = dependency('libsystemd', 'libelogind', 'basu', required: get_option('plugin-mpris'))
-sdbus = declare_dependency(compile_args: ['-DHAVE_' + sdbus_library.name().to_upper()], dependencies:[sdbus_library])
-
 add_project_arguments(
   cc_flags +
   ['-D_GNU_SOURCE'] +

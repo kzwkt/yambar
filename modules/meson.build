@@ -22,8 +22,9 @@ plugin_mem_enabled = get_option('plugin-mem').allowed()
 mpd = dependency('libmpdclient', required: get_option('plugin-mpd'))
 plugin_mpd_enabled = mpd.found()
 
-mpris = sdbus
-plugin_mpris_enabled = sdbus.found()
+# DBus dependency. Used by 'mpris'
+sdbus_library = dependency('libsystemd', 'libelogind', 'basu', required: get_option('plugin-mpris'))
+plugin_mpris_enabled = sdbus_library.found()
 
 json_i3 = dependency('json-c', required: get_option('plugin-i3'))
 plugin_i3_enabled = json_i3.found()
@@ -99,7 +100,8 @@ if plugin_mpd_enabled
 endif
 
 if plugin_mpris_enabled
-  mod_data += {'mpris': [[], [mpris]]}
+  sdbus = declare_dependency(compile_args: ['-DHAVE_' + sdbus_library.name().to_upper()], dependencies:[sdbus_library])
+  mod_data += {'mpris': [[], [sdbus]]}
 endif
 
 if plugin_i3_enabled
