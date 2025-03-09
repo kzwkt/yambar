@@ -135,14 +135,17 @@ metadata_clear(struct metadata *metadata)
 
     if (metadata->album != NULL) {
         free(metadata->album);
+        metadata->album = NULL;
     }
 
     if (metadata->title != NULL) {
         free(metadata->title);
+        metadata->title = NULL;
     }
 
     if (metadata->trackid != NULL) {
         free(metadata->trackid);
+        metadata->trackid = NULL;
     }
 }
 
@@ -296,7 +299,7 @@ metadata_parse_property(const char *property_name, sd_bus_message *message, stru
             goto unexpected_type;
 
         status = sd_bus_message_read(message, "v", argument_layout, &string);
-        if (status > 0)
+        if (status > 0 && strlen(string) > 0)
             buffer->trackid = strdup(string);
 
         /* FIXME: "strcmp matches both 'album' as well as 'albumArtist'" */
@@ -310,7 +313,7 @@ metadata_parse_property(const char *property_name, sd_bus_message *message, stru
 
     } else if (strcmp(property_name, "xesam:title") == 0) {
         status = sd_bus_message_read(message, "v", "s", &string);
-        if(status > 0)
+        if(status > 0 && strlen(string) > 0)
             buffer->title = strdup(string);
 
     } else if (strcmp(property_name, "mpris:length") == 0) {
@@ -393,12 +396,12 @@ property_parse(struct property *prop, const char *property_name, sd_bus_message 
     const char *string;
     if (strcmp(property_name, "PlaybackStatus") == 0) {
         status = sd_bus_message_read(message, "v", "s", &string);
-        if (status)
+        if (status && strlen(string) > 0)
             prop->playback_status = strdup(string);
 
     } else if (strcmp(property_name, "LoopStatus") == 0) {
         status = sd_bus_message_read(message, "v", "s", &string);
-        if (status)
+        if (status && strlen(string) > 0)
             prop->loop_status = strdup(string);
 
     } else if (strcmp(property_name, "Position") == 0) {
