@@ -86,6 +86,7 @@ struct context {
 
     tll(struct client *) clients;
     struct client *current_client;
+    const string_array *identity_list_ref;
 
     bool has_update;
 };
@@ -96,12 +97,11 @@ struct private
     int refresh_abort_fd;
 
     size_t timeout_ms;
+    string_array identity_list;
     struct particle *label;
 
     struct context context;
 };
-
-static tll(const char *) identity_list;
 
 #if defined(LOG_ENABLE_DBG) && LOG_ENABLE_DBG
 static void __attribute__((unused))
@@ -167,12 +167,6 @@ clients_free_by_unique_name(struct context *context, const char *unique_name)
 }
 
 static void
-client_free_all(struct context *context)
-{
-    tll_free_and_free(context->clients, client_free);
-}
-
-static void
 client_add(struct context *context, const char *name, const char *unique_name)
 {
     struct client *client = malloc(sizeof(*client));
@@ -211,9 +205,9 @@ client_change_unique_name(struct client *client, const char *new_name)
 }
 
 static bool
-verify_bus_name(const char *name)
+verify_bus_name(const string_array *identity_list, const char *name)
 {
-    tll_foreach(identity_list, it)
+    tll_foreach(*identity_list, it)
     {
         const char *ident = it->item;
 
@@ -438,11 +432,10 @@ destroy(struct module *mod)
     struct private *m = mod->private;
     struct context *context = &m->context;
 
-    client_free_all(context);
-
+    tll_free_and_free(context->clients, client_free);
     sd_bus_close(context->monitor_connection);
 
-    tll_foreach(identity_list, it) { free((char *)it->item); }
+    tll_free_and_free(m->identity_list, free);
     m->label->destroy(m->label);
     free(m);
 
@@ -509,7 +502,7 @@ context_event_handle_name_acquired(sd_bus_message *message, struct context *cont
         return;
     }
 
-    if (verify_bus_name(name)) {
+    if (verify_bus_name(context->identity_list_ref, name)) {
         const char *unique_name = sd_bus_message_get_destination(message);
         LOG_DBG("'NameAcquired': Acquired new client: %s unique: %s", name, unique_name);
         client_add(context, name, unique_name);
@@ -652,6 +645,7 @@ context_new(struct private *m, struct context *context)
     sd_bus_message_unref(reply);
 
     (*context) = (struct context){
+        .identity_list_ref = &m->identity_list,
         .monitor_connection = connection,
         .clients = tll_init(),
     };
@@ -1055,11 +1049,17 @@ description(const struct module *mod)
 }
 
 static struct module *
-mpris_new(size_t timeout_ms, struct particle *label)
+mpris_new(const struct yml_node *ident_list, size_t timeout_ms, struct particle *label)
 {
     struct private *priv = calloc(1, sizeof(*priv));
     priv->label = label;
     priv->timeout_ms = timeout_ms;
+
+    size_t i = 0;
+    for (struct yml_list_iter iter = yml_list_iter(ident_list); iter.node != NULL; yml_list_next(&iter), i++) {
+        char *string = strdup(yml_value_as_string(iter.node));
+        tll_push_back(priv->identity_list, string);
+    }
 
     struct module *mod = module_common_new();
     mod->private = priv;
@@ -1082,14 +1082,8 @@ from_conf(const struct yml_node *node, struct conf_inherit inherited)
     if (query_timeout != NULL)
         timeout_ms = yml_value_as_int(query_timeout) * 1000;
 
-    // FIXME: This is a redundant copy
-    size_t i = 0;
-    for (struct yml_list_iter iter = yml_list_iter(ident_list); iter.node != NULL; yml_list_next(&iter), i++) {
-        const char *string = strdup(yml_value_as_string(iter.node));
-        tll_push_back(identity_list, string);
-    }
 
-    return mpris_new(timeout_ms, conf_to_particle(c, inherited));
+    return mpris_new(ident_list, timeout_ms, conf_to_particle(c, inherited));
 }
 
 static bool
