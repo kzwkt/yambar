@@ -13,9 +13,6 @@
 
 #include <sys/eventfd.h>
 
-#include "dbus.h"
-#include "yml.h"
-
 #define LOG_MODULE "mpris"
 #define LOG_ENABLE_DBG 0
 #include "../bar/bar.h"
@@ -24,14 +21,17 @@
 #include "../log.h"
 #include "../plugin.h"
 
+#include "dbus.h"
+#include "yml.h"
+
 #define is_empty_string(str) ((str) == NULL || (str)[0] == '\0')
 
-#define DEFAULT_QUERY_TIMEOUT 500
-#define PATH "/org/mpris/MediaPlayer2"
-#define BUS_NAME "org.mpris.MediaPlayer2"
-#define SERVICE "org.mpris.MediaPlayer2"
-#define INTERFACE_ROOT "org.mpris.MediaPlayer2"
-#define INTERFACE_PLAYER INTERFACE_ROOT ".Player"
+#define DEFAULT_QUERY_TIMEOUT_MS (500 * 1000)
+
+#define MPRIS_PATH "/org/mpris/MediaPlayer2"
+#define MPRIS_BUS_NAME "org.mpris.MediaPlayer2"
+#define MPRIS_SERVICE "org.mpris.MediaPlayer2"
+#define MPRIS_INTERFACE_PLAYER "org.mpris.MediaPlayer2.Player"
 
 #define DBUS_PATH "/org/freedesktop/DBus"
 #define DBUS_BUS_NAME "org.freedesktop.DBus"
@@ -101,27 +101,17 @@ struct private
     struct context context;
 };
 
-static tll(const char*) identity_list;
+static tll(const char *) identity_list;
 
-#if 0
-static void
+#if defined(LOG_ENABLE_DBG) && LOG_ENABLE_DBG
+static void __attribute__((unused))
 debug_print_argument_type(sd_bus_message *message)
 {
     char type;
     const char *content;
     sd_bus_message_peek_type(message, &type, &content);
-    LOG_DBG("peek_message_type: %c -> %s", type, content);
+    LOG_DBG("argument type: %c -> %s", type, content);
 }
-#endif
-
-#if defined(LOG_ENABLE_DBG)
-#define dump_type(message)                                                                                             \
-    {                                                                                                                  \
-        char type;                                                                                                     \
-        const char *content;                                                                                           \
-        sd_bus_message_peek_type(message, &type, &content);                                                            \
-        LOG_DBG("argument layout: %c -> %s", type, content);                                                           \
-    }
 #endif
 
 static void
@@ -223,14 +213,15 @@ client_change_unique_name(struct client *client, const char *new_name)
 static bool
 verify_bus_name(const char *name)
 {
-    tll_foreach(identity_list, it) {
+    tll_foreach(identity_list, it)
+    {
         const char *ident = it->item;
 
-        if (strlen(name) < strlen(BUS_NAME ".") + strlen(ident)) {
+        if (strlen(name) < strlen(MPRIS_BUS_NAME ".") + strlen(ident)) {
             continue;
         }
 
-        const char *cmp = name + strlen(BUS_NAME ".");
+        const char *cmp = name + strlen(MPRIS_BUS_NAME ".");
         if (strncmp(cmp, ident, strlen(ident)) != 0) {
             continue;
         }
@@ -309,7 +300,7 @@ metadata_parse_property(const char *property_name, sd_bus_message *message, stru
 
     } else if (strcmp(property_name, "xesam:title") == 0) {
         status = sd_bus_message_read(message, "v", "s", &string);
-        if(status > 0 && !is_empty_string(string))
+        if (status > 0 && !is_empty_string(string))
             buffer->title = strdup(string);
 
     } else if (strcmp(property_name, "mpris:length") == 0) {
@@ -451,9 +442,7 @@ destroy(struct module *mod)
 
     sd_bus_close(context->monitor_connection);
 
-    tll_foreach(identity_list, it) {
-        free((char*)it->item);
-    }
+    tll_foreach(identity_list, it) { free((char *)it->item); }
     m->label->destroy(m->label);
     free(m);
 
@@ -468,14 +457,11 @@ context_event_handle_name_owner_changed(sd_bus_message *message, struct context 
      * it was acquired, lost or changed */
 
     const char *bus_name = NULL, *old_owner = NULL, *new_owner = NULL;
-    int status __attribute__((unused))
-        = sd_bus_message_read(message, "sss", &bus_name, &old_owner, &new_owner);
+    int status __attribute__((unused)) = sd_bus_message_read(message, "sss", &bus_name, &old_owner, &new_owner);
     assert(status > 0);
 
-#if 1
     LOG_DBG("event_handler: 'NameOwnerChanged': bus_name: '%s' old_owner: '%s' new_ower: '%s'", bus_name, old_owner,
             new_owner);
-#endif
 
     if (is_empty_string(new_owner) && !is_empty_string(old_owner)) {
         /* Target bus has been lost */
@@ -514,13 +500,12 @@ context_event_handle_name_acquired(sd_bus_message *message, struct context *cont
     /* NameAcquired (STRING name) */
     /* " This signal is sent to a specific application when it gains ownership of a name. " */
     const char *name = NULL;
-    int status __attribute__((unused))
-        = sd_bus_message_read_basic(message, SD_BUS_TYPE_STRING, &name);
+    int status __attribute__((unused)) = sd_bus_message_read_basic(message, SD_BUS_TYPE_STRING, &name);
     assert(status > 0);
 
-    /*LOG_DBG("event_handler: 'NameAcquired': name: '%s'", name);*/
+    LOG_DBG("event_handler: 'NameAcquired': name: '%s'", name);
 
-    if (strncmp(name, BUS_NAME, strlen(BUS_NAME)) != 0) {
+    if (strncmp(name, MPRIS_BUS_NAME, strlen(MPRIS_BUS_NAME)) != 0) {
         return;
     }
 
@@ -563,7 +548,8 @@ context_event_handler(sd_bus_message *message, void *userdata, sd_bus_error *ret
 
     /* Copy the 'PropertiesChanged/Seeked' message, so it can be parsed
      * later on */
-    if (strcmp(path_name, PATH) == 0 && (strcmp(member, "PropertiesChanged") == 0 || strcmp(member, "Seeked") == 0)) {
+    if (strcmp(path_name, MPRIS_PATH) == 0
+        && (strcmp(member, "PropertiesChanged") == 0 || strcmp(member, "Seeked") == 0)) {
         struct client *client = client_lookup_by_unique_name(context, sender);
         if (client == NULL)
             return 1;
@@ -717,7 +703,7 @@ update_status_from_message(struct module *mod, sd_bus_message *message)
     const char *interface_name = NULL;
     sd_bus_message_read_basic(message, SD_BUS_TYPE_STRING, &interface_name);
 
-    if (strcmp(interface_name, INTERFACE_PLAYER) != 0) {
+    if (strcmp(interface_name, MPRIS_INTERFACE_PLAYER) != 0) {
         LOG_DBG("Ignoring interface: %s", interface_name);
         mtx_unlock(&mod->lock);
         return true;
@@ -732,8 +718,7 @@ update_status_from_message(struct module *mod, sd_bus_message *message)
 
     while ((has_entries = sd_bus_message_enter_container(message, SD_BUS_TYPE_DICT_ENTRY, "sv")) > 0) {
         const char *property_name = NULL;
-        int status __attribute__((unused))
-            = sd_bus_message_read_basic(message, SD_BUS_TYPE_STRING, &property_name);
+        int status __attribute__((unused)) = sd_bus_message_read_basic(message, SD_BUS_TYPE_STRING, &property_name);
         assert(status > 0);
 
         if (!property_parse(&client->property, property_name, message)) {
@@ -1059,7 +1044,6 @@ run(struct module *mod)
         bar->refresh(bar);
     }
 
-
     LOG_DBG("exiting");
     return ret;
 }
@@ -1071,11 +1055,11 @@ description(const struct module *mod)
 }
 
 static struct module *
-mpris_new(size_t timeout, struct particle *label)
+mpris_new(size_t timeout_ms, struct particle *label)
 {
     struct private *priv = calloc(1, sizeof(*priv));
     priv->label = label;
-    priv->timeout_ms = timeout;
+    priv->timeout_ms = timeout_ms;
 
     struct module *mod = module_common_new();
     mod->private = priv;
@@ -1094,8 +1078,8 @@ from_conf(const struct yml_node *node, struct conf_inherit inherited)
     const struct yml_node *query_timeout = yml_get_value(node, "query_timeout");
     const struct yml_node *c = yml_get_value(node, "content");
 
-    size_t timeout_ms = DEFAULT_QUERY_TIMEOUT * 1000;
-    if(query_timeout != NULL)
+    size_t timeout_ms = DEFAULT_QUERY_TIMEOUT_MS;
+    if (query_timeout != NULL)
         timeout_ms = yml_value_as_int(query_timeout) * 1000;
 
     // FIXME: This is a redundant copy
