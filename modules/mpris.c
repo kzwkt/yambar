@@ -24,8 +24,9 @@
 #include "../log.h"
 #include "../plugin.h"
 
-#define DEFAULT_QUERY_TIMEOUT 500
+#define is_empty_string(str) ((str) == NULL || (str)[0] == '\0')
 
+#define DEFAULT_QUERY_TIMEOUT 500
 #define PATH "/org/mpris/MediaPlayer2"
 #define BUS_NAME "org.mpris.MediaPlayer2"
 #define SERVICE "org.mpris.MediaPlayer2"
@@ -259,7 +260,7 @@ read_string_array(sd_bus_message *message, string_array *list)
 
     const char *string;
     while ((status = sd_bus_message_read_basic(message, SD_BUS_TYPE_STRING, &string)) > 0) {
-        if (strlen(string) > 0) {
+        if (!is_empty_string(string)) {
             tll_push_back(*list, strdup(string));
         }
     }
@@ -287,20 +288,20 @@ metadata_parse_property(const char *property_name, sd_bus_message *message, stru
     const char *argument_layout = NULL;
     sd_bus_message_peek_type(message, &argument_type, &argument_layout);
     assert(argument_type == SD_BUS_TYPE_VARIANT);
-    assert(argument_layout != NULL && strlen(argument_layout) > 0);
+    assert(!is_empty_string(argument_layout));
 
     if (strcmp(property_name, "mpris:trackid") == 0) {
         if (argument_layout[0] != SD_BUS_TYPE_STRING && argument_layout[0] != SD_BUS_TYPE_OBJECT_PATH)
             goto unexpected_type;
 
         status = sd_bus_message_read(message, "v", argument_layout, &string);
-        if (status > 0 && strlen(string) > 0)
+        if (status > 0 && !is_empty_string(string))
             buffer->trackid = strdup(string);
 
         /* FIXME: "strcmp matches both 'album' as well as 'albumArtist'" */
     } else if (strcmp(property_name, "xesam:album") == 0) {
         status = sd_bus_message_read(message, "v", argument_layout, &string);
-        if (status > 0 && strlen(string) > 0)
+        if (status > 0 && !is_empty_string(string))
             buffer->album = strdup(string);
 
     } else if (strcmp(property_name, "xesam:artist") == 0) {
@@ -308,7 +309,7 @@ metadata_parse_property(const char *property_name, sd_bus_message *message, stru
 
     } else if (strcmp(property_name, "xesam:title") == 0) {
         status = sd_bus_message_read(message, "v", "s", &string);
-        if(status > 0 && strlen(string) > 0)
+        if(status > 0 && !is_empty_string(string))
             buffer->title = strdup(string);
 
     } else if (strcmp(property_name, "mpris:length") == 0) {
@@ -386,17 +387,17 @@ property_parse(struct property *prop, const char *property_name, sd_bus_message 
 
     assert(status > 0);
     assert(argument_type == SD_BUS_TYPE_VARIANT);
-    assert(argument_layout != NULL && strlen(argument_layout) > 0);
+    assert(!is_empty_string(argument_layout));
 
     const char *string;
     if (strcmp(property_name, "PlaybackStatus") == 0) {
         status = sd_bus_message_read(message, "v", "s", &string);
-        if (status && strlen(string) > 0)
+        if (status && !is_empty_string(string))
             prop->playback_status = strdup(string);
 
     } else if (strcmp(property_name, "LoopStatus") == 0) {
         status = sd_bus_message_read(message, "v", "s", &string);
-        if (status && strlen(string) > 0)
+        if (status && !is_empty_string(string))
             prop->loop_status = strdup(string);
 
     } else if (strcmp(property_name, "Position") == 0) {
@@ -476,7 +477,7 @@ context_event_handle_name_owner_changed(sd_bus_message *message, struct context 
             new_owner);
 #endif
 
-    if (strlen(new_owner) == 0 && strlen(old_owner) > 0) {
+    if (is_empty_string(new_owner) && !is_empty_string(old_owner)) {
         /* Target bus has been lost */
         struct client *client = client_lookup_by_unique_name(context, old_owner);
 
@@ -490,14 +491,14 @@ context_event_handle_name_owner_changed(sd_bus_message *message, struct context 
             context->current_client = NULL;
 
         return;
-    } else if (strlen(old_owner) == 0 && strlen(new_owner) > 0) {
+    } else if (is_empty_string(old_owner) && !is_empty_string(new_owner)) {
         /* New unique name registered. Not used */
         return;
     }
 
     /* Name changed */
-    assert(new_owner != NULL && strlen(new_owner) > 0);
-    assert(old_owner != NULL && strlen(old_owner) > 0);
+    assert(!is_empty_string(new_owner));
+    assert(!is_empty_string(old_owner));
 
     struct client *client = client_lookup_by_unique_name(context, old_owner);
     LOG_DBG("'NameOwnerChanged': Name changed from '%s' to '%s' for client '%s'", old_owner, new_owner,
