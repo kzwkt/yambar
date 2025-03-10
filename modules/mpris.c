@@ -83,11 +83,6 @@ struct context {
     sd_bus *monitor_connection;
     sd_bus_message *update_message;
 
-    /* FIXME: There is no nice way to pass the desired identities to
-     * the event handler for validation. */
-    char **identities_ref;
-    size_t identities_count;
-
     tll(struct client *) clients;
     struct client *current_client;
 
@@ -99,13 +94,13 @@ struct private
     thrd_t refresh_thread_id;
     int refresh_abort_fd;
 
-    size_t identities_count;
     size_t timeout_ms;
-    const char **identities;
     struct particle *label;
 
     struct context context;
 };
+
+static tll(const char*) identity_list;
 
 #if 0
 static void
@@ -225,10 +220,10 @@ client_change_unique_name(struct client *client, const char *new_name)
 }
 
 static bool
-verify_bus_name(char **idents, const size_t ident_count, const char *name)
+verify_bus_name(const char *name)
 {
-    for (size_t i = 0; i < ident_count; i++) {
-        const char *ident = idents[i];
+    tll_foreach(identity_list, it) {
+        const char *ident = it->item;
 
         if (strlen(name) < strlen(BUS_NAME ".") + strlen(ident)) {
             continue;
@@ -455,9 +450,13 @@ destroy(struct module *mod)
 
     sd_bus_close(context->monitor_connection);
 
-    module_default_destroy(mod);
+    tll_foreach(identity_list, it) {
+        free((char*)it->item);
+    }
     m->label->destroy(m->label);
     free(m);
+
+    module_default_destroy(mod);
 }
 
 static void
@@ -524,7 +523,7 @@ context_event_handle_name_acquired(sd_bus_message *message, struct context *cont
         return;
     }
 
-    if (verify_bus_name(context->identities_ref, context->identities_count, name)) {
+    if (verify_bus_name(name)) {
         const char *unique_name = sd_bus_message_get_destination(message);
         LOG_DBG("'NameAcquired': Acquired new client: %s unique: %s", name, unique_name);
         client_add(context, name, unique_name);
@@ -667,8 +666,6 @@ context_new(struct private *m, struct context *context)
 
     (*context) = (struct context){
         .monitor_connection = connection,
-        .identities_ref = (char **)m->identities,
-        .identities_count = m->identities_count,
         .clients = tll_init(),
     };
 
@@ -1061,8 +1058,8 @@ run(struct module *mod)
         bar->refresh(bar);
     }
 
-    LOG_DBG("exiting");
 
+    LOG_DBG("exiting");
     return ret;
 }
 
@@ -1073,17 +1070,11 @@ description(const struct module *mod)
 }
 
 static struct module *
-mpris_new(const char **ident, size_t ident_count, size_t timeout, struct particle *label)
+mpris_new(size_t timeout, struct particle *label)
 {
     struct private *priv = calloc(1, sizeof(*priv));
     priv->label = label;
     priv->timeout_ms = timeout;
-    priv->identities = malloc(sizeof(*ident) * ident_count);
-    priv->identities_count = ident_count;
-
-    for (size_t i = 0; i < ident_count; i++) {
-        priv->identities[i] = strdup(ident[i]);
-    }
 
     struct module *mod = module_common_new();
     mod->private = priv;
@@ -1106,14 +1097,14 @@ from_conf(const struct yml_node *node, struct conf_inherit inherited)
     if(query_timeout != NULL)
         timeout_ms = yml_value_as_int(query_timeout) * 1000;
 
-    const size_t ident_count = yml_list_length(ident_list);
-    const char *ident[ident_count];
+    // FIXME: This is a redundant copy
     size_t i = 0;
     for (struct yml_list_iter iter = yml_list_iter(ident_list); iter.node != NULL; yml_list_next(&iter), i++) {
-        ident[i] = yml_value_as_string(iter.node);
+        const char *string = strdup(yml_value_as_string(iter.node));
+        tll_push_back(identity_list, string);
     }
 
-    return mpris_new(ident, ident_count, timeout_ms, conf_to_particle(c, inherited));
+    return mpris_new(timeout_ms, conf_to_particle(c, inherited));
 }
 
 static bool
