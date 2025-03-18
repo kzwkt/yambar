@@ -81,12 +81,13 @@ struct client {
 };
 
 struct context {
+    const struct private *mpd_config;
+
     sd_bus *monitor_connection;
     sd_bus_message *update_message;
 
     tll(struct client *) clients;
     struct client *current_client;
-    const string_array *identity_list_ref;
 
     bool has_update;
 };
@@ -98,9 +99,8 @@ struct private
 
     size_t timeout_ms;
     string_array identity_list;
-    struct particle *label;
-
     struct context context;
+    struct particle *label;
 };
 
 #if defined(LOG_ENABLE_DBG) && LOG_ENABLE_DBG
@@ -136,30 +136,22 @@ metadata_clear(struct metadata *metadata)
 }
 
 static void
-property_clear(struct property *property)
-{
-    metadata_clear(&property->metadata);
-    memset(property, 0, sizeof(*property));
-}
-
-static void
 client_free(struct client *client)
 {
-    property_clear(&client->property);
-
     free((void *)client->bus_name);
     free((void *)client->bus_unique_name);
     free(client);
 }
 
 static void
-clients_free_by_unique_name(struct context *context, const char *unique_name)
+client_free_by_unique_name(struct context *context, const char *unique_name)
 {
     tll_foreach(context->clients, it)
     {
         struct client *client = it->item;
         if (strcmp(client->bus_unique_name, unique_name) == 0) {
             LOG_DBG("client_remove: Removing client %s", client->bus_name);
+
             client_free(client);
             tll_remove(context->clients, it);
         }
@@ -430,10 +422,9 @@ static void
 destroy(struct module *mod)
 {
     struct private *m = mod->private;
-    struct context *context = &m->context;
 
-    tll_free_and_free(context->clients, client_free);
-    sd_bus_close(context->monitor_connection);
+    tll_free_and_free(m->context.clients, client_free);
+    sd_bus_close(m->context.monitor_connection);
 
     tll_free_and_free(m->identity_list, free);
     m->label->destroy(m->label);
@@ -464,7 +455,7 @@ context_event_handle_name_owner_changed(sd_bus_message *message, struct context 
             return;
 
         LOG_DBG("event_handler: 'NameOwnerChanged': Target bus disappeared: %s", client->bus_name);
-        clients_free_by_unique_name(context, client->bus_unique_name);
+        client_free_by_unique_name(context, client->bus_unique_name);
 
         if (context->current_client == client)
             context->current_client = NULL;
@@ -502,7 +493,7 @@ context_event_handle_name_acquired(sd_bus_message *message, struct context *cont
         return;
     }
 
-    if (verify_bus_name(context->identity_list_ref, name)) {
+    if (verify_bus_name(&context->mpd_config->identity_list, name)) {
         const char *unique_name = sd_bus_message_get_destination(message);
         LOG_DBG("'NameAcquired': Acquired new client: %s unique: %s", name, unique_name);
         client_add(context, name, unique_name);
@@ -591,14 +582,16 @@ context_process_events(struct context *context, uint32_t timeout_ms)
 }
 
 static bool
-context_new(struct private *m, struct context *context)
+context_setup(struct context *context)
 {
     int status = true;
     sd_bus *connection;
     if ((status = sd_bus_default_user(&connection)) < 0) {
         LOG_ERR("Failed to connect to the desktop bus. errno: %d", status);
-        return -1;
+        return false;
     }
+
+    context->monitor_connection = connection;
 
     /* Turn this connection into a monitor */
     sd_bus_message *message;
@@ -633,22 +626,15 @@ context_new(struct private *m, struct context *context)
 
     sd_bus_message *reply = NULL;
     sd_bus_error error = {};
-    status = sd_bus_call(NULL, message, m->timeout_ms, &error, &reply);
+    status = sd_bus_call(NULL, message, context->mpd_config->timeout_ms, &error, &reply);
 
     if (status < 0 && sd_bus_error_is_set(&error)) {
-        LOG_ERR("context_new: got error response: %s: %s (%d)", error.name, error.message,
-                sd_bus_error_get_errno(&error));
+        LOG_ERR("context_setup: got error: %s: %s (%d)", error.name, error.message, sd_bus_error_get_errno(&error));
         return false;
     }
 
     sd_bus_message_unref(message);
     sd_bus_message_unref(reply);
-
-    (*context) = (struct context){
-        .identity_list_ref = &m->identity_list,
-        .monitor_connection = connection,
-        .clients = tll_init(),
-    };
 
     sd_bus_add_filter(connection, NULL, context_event_handler, context);
 
@@ -765,6 +751,7 @@ static struct exposable *
 content_empty(struct module *mod)
 {
     struct private *m = mod->private;
+    mtx_lock(&mod->lock);
 
     struct tag_set tags = {
         .tags = (struct tag *[]){
@@ -784,11 +771,10 @@ content_empty(struct module *mod)
         .count = 10,
     };
 
+    struct exposable *exposable = m->label->instantiate(m->label, &tags);
+    tag_set_destroy(&tags);
     mtx_unlock(&mod->lock);
 
-    struct exposable *exposable = m->label->instantiate(m->label, &tags);
-
-    tag_set_destroy(&tags);
     return exposable;
 }
 
@@ -862,6 +848,7 @@ content(struct module *mod)
     const enum tag_realtime_unit realtime_unit
         = (client->has_seeked_support && client->status == STATUS_PLAYING) ? TAG_REALTIME_MSECS : TAG_REALTIME_NONE;
 
+    mtx_lock(&mod->lock);
     struct tag_set tags = {
         .tags = (struct tag *[]){
             tag_new_bool(mod, "has_seeked_support", client->has_seeked_support),
@@ -880,11 +867,10 @@ content(struct module *mod)
         .count = 11,
     };
 
+    struct exposable *exposable = m->label->instantiate(m->label, &tags);
+    tag_set_destroy(&tags);
     mtx_unlock(&mod->lock);
 
-    struct exposable *exposable = m->label->instantiate(m->label, &tags);
-
-    tag_set_destroy(&tags);
     return exposable;
 }
 
@@ -990,7 +976,7 @@ run(struct module *mod)
     const struct bar *bar = mod->bar;
     struct private *m = mod->private;
 
-    if (!context_new(m, &m->context)) {
+    if (!context_setup(&m->context)) {
         LOG_ERR("Failed to setup context");
         return -1;
     }
@@ -1054,6 +1040,7 @@ mpris_new(const struct yml_node *ident_list, size_t timeout_ms, struct particle 
     struct private *priv = calloc(1, sizeof(*priv));
     priv->label = label;
     priv->timeout_ms = timeout_ms;
+    priv->context.mpd_config = priv;
 
     size_t i = 0;
     for (struct yml_list_iter iter = yml_list_iter(ident_list); iter.node != NULL; yml_list_next(&iter), i++) {
@@ -1081,7 +1068,6 @@ from_conf(const struct yml_node *node, struct conf_inherit inherited)
     size_t timeout_ms = DEFAULT_QUERY_TIMEOUT_MS;
     if (query_timeout != NULL)
         timeout_ms = yml_value_as_int(query_timeout) * 1000;
-
 
     return mpris_new(ident_list, timeout_ms, conf_to_particle(c, inherited));
 }
